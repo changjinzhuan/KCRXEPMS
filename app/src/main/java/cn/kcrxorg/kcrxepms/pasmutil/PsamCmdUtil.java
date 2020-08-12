@@ -577,11 +577,14 @@ public class PsamCmdUtil {
         MyLogger.e(TAG,"执行命令："+cmd);
         if (len > 0) {
             String resultStr = Tools.Bytes2HexString(result, len);
+            MyLogger.e(TAG,"收到PSAM返回："+resultStr);
             if(resultStr.startsWith("61"))
             {
                 pwd = getResponse(psam, Tools.HexString2Bytes(resultStr.substring(2))) ;
+               // MyLogger.e(TAG,"收到PSAM返回："+Tools.Bytes2HexString(pwd,pwd.length));
                 return Tools.Bytes2HexString(pwd,pwd.length)+"9000";
             }
+
             return resultStr ;
         }
         return null;

@@ -23,6 +23,14 @@ android {
     repositories {
         maven { url "https://jitpack.io" }
     }
+    android.applicationVariants.all {
+        variant ->
+            variant.outputs.all {
+                //在这里修改apk文件名
+                // outputFileName = "NewPadScaner-${variant.name}-v${variant.versionName}.apk"
+                outputFileName = "KCRXEPMSRS.apk"
+            }
+    }
 
 }
 
@@ -33,6 +41,7 @@ dependencies {
     implementation 'com.google.android.material:material:1.1.0'
     implementation 'androidx.annotation:annotation:1.1.0'
     implementation 'androidx.lifecycle:lifecycle-extensions:2.2.0'
+    implementation files('libs\\uhfr_com0_v1.8.jar')
     testImplementation 'junit:junit:4.12'
     androidTestImplementation 'androidx.test.ext:junit:1.1.1'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.2.0'

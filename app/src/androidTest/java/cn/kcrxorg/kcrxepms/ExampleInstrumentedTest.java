@@ -8,6 +8,9 @@ import com.BRMicro.Tools;
 import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import cn.kcrxorg.kcrxepms.businessmodule.mapper.UserMapper;
+import cn.kcrxorg.kcrxepms.communicationmodule.BaseCmd;
+import cn.kcrxorg.kcrxepms.communicationmodule.Cmd2002;
+import cn.kcrxorg.kcrxepms.communicationmodule.CmdSelector;
 import cn.kcrxorg.kcrxepms.mbutil.MyLog;
 import cn.kcrxorg.kcrxepms.mbutil.TXTReader;
 import cn.kcrxorg.kcrxepms.pasmutil.DESHelper;
@@ -49,12 +52,23 @@ public class ExampleInstrumentedTest {
 
         assertEquals("cn.kcrxorg.kcrxepms", appContext.getPackageName());
 
-        mylog=new MyLog(appContext,10000,1);
-        mylog.Write("程序已启动！*****************************");
+//        mylog=new MyLog(appContext,10000,1);
+//        mylog.Write("程序已启动！*****************************");
+//
+//        mylog.Write("初始化完成");
 
-        mylog.Write("初始化完成");
 
+        String cmd2002str="700000948000000005F5E1132002EB900938486FFAB01E27381A31AF8C9E37C0F10FED71562D8FD6059230565FDF4124334AB314638A2B57042A01B12F4B21AAC837A31AF76002E868DBB787E93853C48F8E2F494CA499CFE63310453448B21661B7410B3A4890E934B83E70E84EF28A83088BE7DB00CD6F51221EBB374D37514FD5835D43DF7DD6EF9156AE5CFE01830F1FCF74A4BE291045AFA9DFAE27DE2A5537";
+        BaseCmd baseCmd = CmdSelector.makeCmd(cmd2002str);
+        String skey="0F9A4806C75B891FF5D0253D212D2822";
+        try {
+            Cmd2002 cmd2002=new Cmd2002(baseCmd,skey);
+            String cmdjason=new String(Tools.HexString2Bytes(cmd2002.getData().substring(8)), "utf-8");
 
+            Log.e("kcrx","cmdjason="+cmdjason);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
 
 //        String msg = null;
@@ -81,39 +95,39 @@ public class ExampleInstrumentedTest {
 //        } catch (UnsupportedEncodingException e) {
 //            e.printStackTrace();
 //        }
-        PsamCmdUtil psam = new PsamCmdUtil();
-        if (psam.openRfid() != null) {
-            Log.d("test","打开PSAM模块成功");
-        }
-        PsamError err = new PsamError();
-        byte[] result = null;
-        //复位
-        result = psam.resetCard(1);
-        if (result != null) {
-            Log.e("test","复位PSAM卡：" + Tools.Bytes2HexString(result, result.length));
-        } else {
-
-            Log.e("test","复位PSAM卡失败");
-            // Util.play(3, 0);
-        }
-
-
-
-        //用户验证
-        boolean flag = psam.verifyUser(1,
-                Tools.HexString2Bytes("5053414D49303031"),
-                Tools.HexString2Bytes("4D494D49535F5053414D5F55534552"), err);
-        if (flag) {
-            Log.e("test", "用户验证成功：");
-        } else {
-            Log.e("test", "用户验证失败，错误码：");
-            //Util.play(3, 0);
-            return ;
-        }
-        String tracedata="6AB522964ED273A8A6334F9DDBAE314023C9008EF6A178C8";
-        byte[] rs=psam.decryptElsData(1,Tools.HexString2Bytes("481FCBEE114E200E0061B641"),Tools.HexString2Bytes("2365FDAE8A9AFC90AF760EA4F775B2E541AECCC8B9B98C2E35595AC7DB152EFB"),err);
-
-        Log.e("test", "追溯数据为:"+Tools.Bytes2HexString(rs,rs.length));
+//        PsamCmdUtil psam = new PsamCmdUtil();
+//        if (psam.openRfid() != null) {
+//            Log.d("test","打开PSAM模块成功");
+//        }
+//        PsamError err = new PsamError();
+//        byte[] result = null;
+//        //复位
+//        result = psam.resetCard(1);
+//        if (result != null) {
+//            Log.e("test","复位PSAM卡：" + Tools.Bytes2HexString(result, result.length));
+//        } else {
+//
+//            Log.e("test","复位PSAM卡失败");
+//            // Util.play(3, 0);
+//        }
+//
+//
+//
+//        //用户验证
+//        boolean flag = psam.verifyUser(1,
+//                Tools.HexString2Bytes("5053414D49303031"),
+//                Tools.HexString2Bytes("4D494D49535F5053414D5F55534552"), err);
+//        if (flag) {
+//            Log.e("test", "用户验证成功：");
+//        } else {
+//            Log.e("test", "用户验证失败，错误码：");
+//            //Util.play(3, 0);
+//            return ;
+//        }
+//        String tracedata="6AB522964ED273A8A6334F9DDBAE314023C9008EF6A178C8";
+//        byte[] rs=psam.decryptElsData(1,Tools.HexString2Bytes("481FCBEE114E200E0061B641"),Tools.HexString2Bytes("2365FDAE8A9AFC90AF760EA4F775B2E541AECCC8B9B98C2E35595AC7DB152EFB"),err);
+//
+//        Log.e("test", "追溯数据为:"+Tools.Bytes2HexString(rs,rs.length));
 
 //        byte Volume=0x01;
 //        String cmd="";

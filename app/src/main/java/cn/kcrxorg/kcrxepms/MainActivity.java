@@ -244,6 +244,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     {
         String info = config.getValue("serverIp")+"_50002";
         try {
+            mylog.Write(R.string.connecting+"ip="+info);
             startSocketClient(info);
             tv_connectstate.setText(R.string.connecting);
             mylog.Write(getResources().getString(R.string.connecting));
@@ -472,8 +473,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     mylog.Write("复位PSAM卡：" + Tools.Bytes2HexString(result, result.length));
                 } else {
 
-                    mylog.Write("复位PSAM卡失败");
-                    //  Util.play(3, 0);
+                    mylog.Write("复位PSAM卡失败");//  Util.play(3, 0);
                 }
                 String psaminfo = "";
                 result = psam.getPSAMinfo(psamCard, err);
@@ -773,7 +773,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             case 2002://接收任务数据
                 mylog.Write("收到2002指令:" + cmddata);
                 tv_connectstate.setText("正在进行接收任务数据....");
-                Cmd2002 cmd2002 = new Cmd2002(basecmd);
+                Cmd2002 cmd2002 = new Cmd2002(basecmd,skey);
                 String cmdjason=new String(Tools.HexString2Bytes(cmd2002.getData().substring(8)), "utf-8");
                 TXTWriter.writeBinFile(CmdDirF + "/" + "CMD_" + cmd2002.getId() + "_" + cmd2002.getTimestamp() + ".json", cmdjason.getBytes());
                 mylog.Write("生成任务文件=" + "CMD_" + cmd2002.getId() + "_" + cmd2002.getTimestamp() + ".json");

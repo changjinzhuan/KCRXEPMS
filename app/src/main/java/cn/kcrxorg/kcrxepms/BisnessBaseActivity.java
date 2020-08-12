@@ -148,7 +148,6 @@ public class BisnessBaseActivity extends AppCompatActivity {
                         addRsinfo("本业务不支持开关锁",false);
                         return;
                     }
-
                     operateLockGetrs(true);
                 }
                 if(keyCode==KeyEvent.KEYCODE_F2)
@@ -159,7 +158,6 @@ public class BisnessBaseActivity extends AppCompatActivity {
                         addRsinfo("本业务不支持开关锁",false);
                         return;
                     }
-
                     operateLockGetrs(false);
                 }
 
@@ -175,7 +173,7 @@ public class BisnessBaseActivity extends AppCompatActivity {
 
     public void readCard() {
         uhfHelper=new UHFHelper(mHandler,this);
-        uhfHelper.readCARD(18,10);
+        uhfHelper.readCARD(25,10);
     }
 
     //show tips

@@ -32,7 +32,7 @@ public class UHFHelper {
         if(mUhfrManager!=null)
         {
             try {
-                Thread.sleep(200);
+                Thread.sleep(100);
             } catch (Exception e) {
                 mylog.Write(e.getMessage());
                 e.printStackTrace();
@@ -51,7 +51,7 @@ public class UHFHelper {
         mUhfrManager.setPower(readpower,writepower);
         List<Reader.TAGINFO> list1;
 
-        list1 = mUhfrManager.tagInventoryByTimer((short) 100);
+        list1 = mUhfrManager.tagInventoryByTimer((short) 1500);
         mylog.Write("开始读取标签,读取功率:"+mUhfrManager.getPower()[0]);
         if (list1 != null && list1.size() > 0)
         {
