@@ -5,7 +5,7 @@ android {
 
 
     defaultConfig {
-        applicationId "cn.kcrxorg.kcrxepms"
+        applicationId "cn.kcrxorg.kcrxepmsrs"
         minSdkVersion 24
         targetSdkVersion 28
         versionCode 1
@@ -42,11 +42,12 @@ dependencies {
     implementation 'androidx.annotation:annotation:1.1.0'
     implementation 'androidx.lifecycle:lifecycle-extensions:2.2.0'
     implementation files('libs\\uhfr_com0_v1.8.jar')
+    implementation files('libs\\dev_v1_2.jar')
     testImplementation 'junit:junit:4.12'
     androidTestImplementation 'androidx.test.ext:junit:1.1.1'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.2.0'
     implementation files('libs/hf_psam1.3.jar')
-    implementation files('libs/uhf_r_v1.0.jar')
+//    implementation files('libs/uhf_r_v1.0.jar')
     implementation 'com.alibaba:fastjson:1.1.54.android'
     implementation 'com.github.vilyever:AndroidSocketClient:2.0.1'
     implementation 'org.jetbrains:annotations-java5:15.0'
@@ -57,4 +58,5 @@ dependencies {
     implementation files('libs/slf4j-log4j12-1.5.2.jar')
     implementation files('libs/mina-core-2.0.4.jar')
     implementation files('libs/nanohttpd-2.2.0.jar')
+    implementation 'com.github.warkiz.widget:indicatorseekbar:1.1.2'
 }

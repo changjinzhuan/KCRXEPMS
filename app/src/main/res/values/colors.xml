@@ -9,4 +9,5 @@
     <color name="red">#CC0000</color>
     <drawable name="clr_normal">#6200EE</drawable>
     <drawable name="clr_pressed">#3700B3</drawable>
+    <drawable name="clr_disable">#616063</drawable>
 </resources>

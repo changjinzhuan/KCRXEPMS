@@ -45,46 +45,69 @@
         android:layout_marginStart="30dp"
         android:layout_marginEnd="30dp"
         android:layout_marginBottom="100dp"
-        android:divider="@drawable/separator"
-        android:orientation="horizontal"
+        android:divider="@drawable/vertical_separator"
+        android:orientation="vertical"
         android:showDividers="middle"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent">
 
-        <Button
-            android:id="@+id/btn_connect"
-            style="@style/Widget.AppCompat.Button.Borderless"
-            android:layout_width="wrap_content"
-            android:layout_height="60dp"
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
             android:layout_weight="1"
-            android:background="@drawable/button_selector"
-            android:padding="3dp"
-            android:text="@string/btn_connect"
-            android:textColor="@color/TextWhite"
-            android:textSize="24dp" />
+            android:orientation="horizontal"
+            android:divider="@drawable/separator"
+            android:showDividers="middle">
 
-        <Button
-            android:id="@+id/btn_select"
-            style="@style/Widget.AppCompat.Button.Borderless"
-            android:layout_width="wrap_content"
-            android:layout_height="60dp"
-            android:layout_weight="1"
-            android:background="@drawable/button_selector"
-            android:padding="3dp"
-            android:text="@string/submit"
-            android:textColor="@color/TextWhite"
-            android:textSize="24dp" />
+            <Button
+                android:id="@+id/btn_connect"
+                style="@style/Widget.AppCompat.Button.Borderless"
+                android:layout_width="wrap_content"
+                android:layout_height="60dp"
+                android:layout_weight="1"
+                android:background="@drawable/button_selector"
+                android:enabled="false"
+                android:text="@string/btn_connect"
+                android:textColor="@color/TextWhite"
+                android:textSize="24dp" />
+
+            <Button
+                android:id="@+id/btn_select"
+                style="@style/Widget.AppCompat.Button.Borderless"
+                android:layout_width="wrap_content"
+                android:layout_height="60dp"
+                android:layout_weight="1"
+                android:background="@drawable/button_selector"
+                android:enabled="false"
+                android:text="@string/submit"
+                android:textColor="@color/TextWhite"
+                android:textSize="24dp" />
+
+            <Button
+                android:id="@+id/btn_sacktrace"
+                style="@style/Widget.AppCompat.Button.Borderless"
+                android:layout_width="wrap_content"
+                android:layout_height="60dp"
+                android:layout_weight="1"
+                android:background="@drawable/button_selector"
+                android:text="签封追溯"
+                android:textColor="@color/TextWhite"
+                android:textSize="24dp" />
+
+        </LinearLayout>
 
         <Button
             android:id="@+id/btn_dobis"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="60dp"
             android:layout_weight="1"
             android:background="@drawable/button_selector"
+            android:paddingTop="5dp"
             android:text="执行待办"
             android:textColor="@color/TextWhite"
             android:textSize="24sp" />
+
     </LinearLayout>
 
 
