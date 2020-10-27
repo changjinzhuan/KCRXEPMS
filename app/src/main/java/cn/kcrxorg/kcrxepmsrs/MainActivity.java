@@ -1,6 +1,7 @@
 package cn.kcrxorg.kcrxepmsrs;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import cn.kcrxorg.kcrxepmsrs.businessmodule.cmdinfo.User;
 import cn.kcrxorg.kcrxepmsrs.businessmodule.cmdinfo.UserCommand;
@@ -8,6 +9,7 @@ import cn.kcrxorg.kcrxepmsrs.businessmodule.mapper.UserMapper;
 import cn.kcrxorg.kcrxepmsrs.communicationmodule.BaseCmd;
 import cn.kcrxorg.kcrxepmsrs.communicationmodule.Cmd1001;
 import cn.kcrxorg.kcrxepmsrs.communicationmodule.Cmd1002;
+import cn.kcrxorg.kcrxepmsrs.communicationmodule.Cmd1005;
 import cn.kcrxorg.kcrxepmsrs.communicationmodule.Cmd2002;
 import cn.kcrxorg.kcrxepmsrs.communicationmodule.Cmd2003;
 import cn.kcrxorg.kcrxepmsrs.communicationmodule.Cmd2004;
@@ -19,9 +21,11 @@ import cn.kcrxorg.kcrxepmsrs.communicationmodule.CmdSelector;
 import cn.kcrxorg.kcrxepmsrs.communicationmodule.L4vtype;
 import cn.kcrxorg.kcrxepmsrs.communicationmodule.Replay2004;
 import cn.kcrxorg.kcrxepmsrs.communicationmodule.Replay4002;
+import cn.kcrxorg.kcrxepmsrs.communicationmodule.Replay4003;
 import cn.kcrxorg.kcrxepmsrs.communicationmodule.Replay8001;
 import cn.kcrxorg.kcrxepmsrs.communicationmodule.Replay8002;
 import cn.kcrxorg.kcrxepmsrs.communicationmodule.Reply1001;
+import cn.kcrxorg.kcrxepmsrs.mbutil.DateUtil;
 import cn.kcrxorg.kcrxepmsrs.mbutil.MyLog;
 import cn.kcrxorg.kcrxepmsrs.mbutil.MyTools;
 import cn.kcrxorg.kcrxepmsrs.mbutil.NetChecker;
@@ -35,9 +39,15 @@ import cn.kcrxorg.kcrxepmsrs.pasmutil.PsamCmdUtil;
 import cn.kcrxorg.kcrxepmsrs.pasmutil.PsamError;
 import cn.kcrxorg.kcrxepmsrs.pasmutil.SHA1Util;
 import cn.kcrxorg.kcrxepmsrs.ui.login.LoginActivity;
+import cn.kcrxorg.kcrxepmsrs.views.BatteryView;
 
 
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -51,6 +61,7 @@ import android.widget.Toast;
 
 import com.BRMicro.Tools;
 import com.alibaba.fastjson.JSONObject;
+import com.android.rfid.DevSettings;
 import com.vilyever.socketclient.SocketClient;
 import com.vilyever.socketclient.helper.SocketClientDelegate;
 import com.vilyever.socketclient.helper.SocketResponsePacket;
@@ -61,8 +72,12 @@ import org.apache.ftpserver.ftplet.FtpException;
 import java.io.File;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.lang.reflect.Field;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Date;
+import java.util.List;
 import java.util.Random;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
@@ -73,6 +88,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     Button btn_sacktrace;//签封追溯
     TextView tv_connectstate;
     TextView tv_loginstate;
+
+    BatteryView mBatteryView;
+
     private SocketClient socketClient;
     private SocketClientDelegate delegate;
 
@@ -170,7 +188,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         mylog.Write("auditor=" + auditor);
         if (!operator.equals("00000000")) {
             tv_loginstate.setText("操作员:" + operatorUser.getName() + " 已登录\r\n复核员:"+auditorUser.getName()+" 已登录");
-            tv_loginstate.setTextColor(getResources().getColor(R.color.green));
+            tv_loginstate.setTextColor(getResources().getColor(R.color.DarkGreen));
         }
 
 
@@ -190,13 +208,16 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             public void handleMessage(Message msg) {
                 super.handleMessage(msg);
                 switch (msg.what){
-                    case 100:
+                    case 7://自动提交消息
+                       onClick(btn_select);
+                        break;
+                    case 100://自动连接
                         mylog.Write("网路状态:" + msg.getData().getBoolean("netstate"));
                         if (msg.getData().getBoolean("netstate"))
                         {
-                           Util.playconnect();
                            btn_connect.setEnabled(true);
                            btn_select.setEnabled(true);
+                           onClick(btn_connect);
                            break;
                         }
                         btn_connect.setEnabled(false);
@@ -222,6 +243,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         tv_connectstate = findViewById(R.id.tv_connectstate);
         tv_loginstate = findViewById(R.id.tv_loginstate);
 
+        mBatteryView=findViewById(R.id.batteryView);
+
         btn_connect.setOnClickListener(this);
         btn_select.setOnClickListener(this);
         btn_dobis.setOnClickListener(this);
@@ -230,9 +253,25 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     @Override
+    protected void onPause() {
+        super.onPause();
+        unregisterBattery();
+     //   mylog.Write("主界面已暂停!");
+     //   if(socketClient!=null)
+     //   socketClient.disconnect();
+     //   mylog.Write("关闭通讯组件连接...");
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        registerBattery();
+    }
+
+    @Override
     protected void onDestroy() {
         super.onDestroy();
-        mylog.Write("程序已关闭!");
+        mylog.Write("主界面已关闭!");
         if (socketClient != null) {
             socketClient.disconnect();
         }
@@ -271,10 +310,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     showToast("通讯组件未连接，无法提交！请先连接通讯组件");
                     break;
                 }
+
                 businessstate = 1;
                 if (businessstate == 1)//如果是业务完成状态
                 {
-
                     TXTReader tr = new TXTReader();
                     try {
                         //  tr.findLastFile(this,DataDir);
@@ -285,6 +324,25 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         }
                         if (!data.equals(""))//如果最近任务存在
                         {
+                            mylog.Write("任务结果data=" + data);
+                            String cmdhex=data.substring(24);
+                            byte[] cmdb=Tools.HexString2Bytes(cmdhex);
+                            String cmd=new String(cmdb);
+
+                            JSONObject jsonObject = JSONObject.parseObject(cmd);
+                            int cmdcode = jsonObject.getIntValue("code");
+                            mylog.Write("查找到业务数据code=" + cmdcode);
+
+                            //测试提交刷卡
+                            if(cmdcode==163842)//如果出库任务
+                            {
+                                mylog.Write("是出入库业务准备提交刷卡信息！");
+                                upDataCard();
+                                tv_connectstate.setText("用户卡号数据提交中....");
+                                Thread.sleep(1500);
+                                mylog.Write("用户卡号数据提交中...等待1.5秒后再提交业务数据!");
+                            }
+
                             String id = data.substring(0, 8);
                             Random rnd = new Random();
                             int fragmentint = rnd.nextInt(999999);
@@ -300,6 +358,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                             ;
                             mylog.Write("operhex=" + operhex);
                             mylog.Write("aduithex=" + aduithex);
+
+
 
                             String payloads = id + fragment + timestamp + new L4vtype(data) + operhex + aduithex;
                             mylog.Write("加密前数据" + payloads);
@@ -319,13 +379,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                             mylog.Write("replay4002长度检查=" + replay4002.checkLenth());
                             socketClient.sendData(Tools.HexString2Bytes(reply4002data));
                             mylog.Write("发送replay4002");
-
                             showToast("任务提交完成!id=" + id);
 
                         } else {
                             showToast("没有任务需要提交!");
                         }
-
                     } catch (Exception e) {
                         mylog.Write("提交失败！" + e.getMessage());
                         e.printStackTrace();
@@ -333,26 +391,91 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     }
                 }
                 break;
-            case R.id.btn_dobis:
+            case R.id.btn_dobis://待办业务
+                //操作员过滤
+                if (operator.equals("00000000")) {
+                    showToast("操作员未登录，不可办理业务！请操作员登录...");
+                    return;
+                }
+                mylog.Write("正在查找最近的业务文件");
                 TXTReader tr = new TXTReader();
                 try {
                     String cmddata = tr.findLastFile(this, CmdDir);//找到最近的任务
+                    mylog.Write("找到最近的代办业务数据="+cmddata);
                     String id = cmddata.substring(0, 8);
                     mylog.Write("收到待办业务指令，查找到待办业务ID=" + id);
                     doBusiness(id);
-
-                } catch (UnsupportedEncodingException e) {
-                    showToast("无待办业务!执行失败");
-                    mylog.Write("无待办业务!执行失败");
-                    e.printStackTrace();
+                } catch (Exception e) {
+                    showToast("无待办业务!");
+                    Util.playErr();
+                    mylog.Write("无待办业务!执行失败"+e.toString());
+                  //  e.printStackTrace();
                 }
                 break;
 
             case R.id.btn_sacktrace:
+                //操作员过滤
+                if (operator.equals("00000000")) {
+                    showToast("操作员未登录，不可办理业务！请操作员登录...");
+                    return;
+                }
                 Intent sacktraceintent = new Intent(MainActivity.this, SackTraceActivity.class);
                 startActivity(sacktraceintent);
                 break;
         }
+    }
+
+    private void upDataCard() {
+        try {
+            Replay4003 replay4003=new Replay4003();
+            String aid=config.getValue("stackCode");
+            if(aid==null||aid.equals(""))//库间配置为空
+            {
+                mylog.Write("stackCode库间编号未配置，不提交刷卡信息");
+                return;
+            }
+            mylog.Write("stackCode库间编号" + aid);
+            UserMapper userMapper=new UserMapper(this);
+
+            List<User> userList=userMapper.getUsers();
+            if(userList.size()==0)
+            {
+                mylog.Write("未同步用户信息，不提交刷卡信息");
+                return;
+            }
+           // String users=config.getValue("users");//卡号冒号隔开
+            String useruid=userList.get(0).getUid();
+            mylog.Write("users用户UID信息" + useruid);
+            int cardnums=Integer.valueOf(useruid);
+            String cardnumhexs=Tools.Bytes2HexString(MyTools.intToByteArray(cardnums),MyTools.intToByteArray(cardnums).length);
+
+            String payloads=new L4vtype(Tools.Bytes2HexString(aid.getBytes(),aid.getBytes().length))
+                    +"0001"
+                    +cardnumhexs;
+
+            mylog.Write("4003加密前数据" + payloads);
+            String mPayloads = DESHelper.encryptStr(payloads, skey);
+            String allMAC = DESHelper.encryptStr(mPayloads, mkey);
+            String MAC = allMAC.substring(allMAC.length() - 16, allMAC.length() - 8);
+            mPayloads = mPayloads + MAC;
+
+            replay4003.setPayloads(mPayloads);
+
+            int len = replay4003.getPayloads().length() / 2;
+            String hex = Integer.toHexString(len).toUpperCase();
+            replay4003.setLength("F" + MyTools.addZeroForNum(hex, 7));
+            replay4003.setSequence(sequence);//
+            String reply4002data = replay4003.toDataString().toUpperCase();
+            mylog.Write("replay4003=" + reply4002data);
+            mylog.Write("replay4003长度检查=" + replay4003.checkLenth());
+            socketClient.sendData(Tools.HexString2Bytes(reply4002data));
+            mylog.Write("发送replay4003刷卡信息");
+
+        }catch (Exception e)
+        {
+            mylog.Write("4003提交刷卡信息失败：" + e.getMessage());
+        }
+
     }
 
 
@@ -374,13 +497,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 tv_connectstate.setText(R.string.connecting);
               //  tv_connectstate.setTextColor(getResources().getColor(R.color.green));
                 mylog.Write("socket连接成功=" + client.getState());
+                btn_connect.setEnabled(false);
             }
 
             @Override
             public void onDisconnected(SocketClient client) {
                 mylog.Write("socket连接断开");
-                tv_connectstate.setText("通讯组件未连接,请检查连接...");
+                tv_connectstate.setText("通讯组件未连接...");
                 tv_connectstate.setTextColor(getResources().getColor(R.color.red));
+                btn_connect.setEnabled(true);
             }
 
             @Override
@@ -388,8 +513,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 byte[] data = responsePacket.getData();
                 //  MyLogger.show("kcrx","data=" + Tools.Bytes2HexString(data,data.length));
                 mylog.Write("recv<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
-                mylog.Write("收到通讯组件data=" + Tools.Bytes2HexString(data, data.length));
-                BaseCmd baseCmd = CmdSelector.makeCmd(Tools.Bytes2HexString(data, data.length));
+
+                String datastr=TXTReader.byteArrToHex(data);
+                mylog.Write("收到通讯组件data=" + datastr);
+                BaseCmd baseCmd = CmdSelector.makeCmd(datastr);
                 if (baseCmd != null) {
                     mylog.Write("收到通讯组件命令:" + baseCmd.getTransport());
                     if (!baseCmd.checkLenth())//命令检查未通过
@@ -401,7 +528,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         {
                             mylog.Write("可能粘包，拆分任务...");
                             try {
-                            String hexdata= Tools.Bytes2HexString(data, data.length);
+                            String hexdata= datastr;
                             int lenpayload4002=Integer.parseInt(hexdata.substring(1,8),16);
 
                             String dataone=hexdata.substring(0,28+lenpayload4002*2);
@@ -444,7 +571,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                             executeCmd(baseCmd, Tools.Bytes2HexString(data, data.length));
                         } catch (Exception e) {
                             mylog.Write("执行命令失败:" + Tools.Bytes2HexString(data, data.length));
-                            mylog.Write("执行命令失败:" + e.getStackTrace());
+                            mylog.Write("执行命令失败:" + e.toString());
                             showToast("执行命令失败!");
                         }
                     }
@@ -525,6 +652,21 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 mylog.Write("收到4002响应error="+cmd4002.getError());
                 tv_connectstate.setText("提交响应:"+cmd4002.getError());
                 break;
+            case 4003:
+                mylog.Write("收到4003响应:" + cmddata);
+                Cmd4002 cmd4003=new Cmd4002(basecmd,skey);
+                String error4003=cmd4003.getError().split("详细信息")[0];
+                if(error4003.equals("")||error4003==null)
+                {
+                    mylog.Write("收到4003响应error为空，刷卡验证通过");
+                    tv_connectstate.setText("提交用户刷卡数据成功！");
+                }
+                else
+                {
+                    mylog.Write("收到4003响应error="+cmd4003.getError());
+                    tv_connectstate.setText("提交用户卡号响应:"+cmd4003.getError().split("详细信息")[0]);
+                }
+              break;
             case 8001:
                 mylog.Write("收到8001指令:" + cmddata);
                 Cmd8001 cmd8001 = new Cmd8001(basecmd, skey);
@@ -550,7 +692,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         Replay8001 replay8001 = new Replay8001();
                         replay8001.setAtr(Tools.Bytes2HexString(result8001, result8001.length));
                         replay8001.setSequence(basecmd.getSequence());
-                        String payloads = replay8001.getError() + Integer.toHexString(replay8001.getAtr().length() / 2) + replay8001.getAtr();
+                        String payloads="";
+                        if((replay8001.getAtr().length() / 2)<=16)//如果ATR长度小于等于16
+                        {
+                             payloads = replay8001.getError() +MyTools.addZeroForNum(Integer.toHexString(replay8001.getAtr().length() / 2) ,2) + replay8001.getAtr();
+                        }else
+                        {
+                             payloads = replay8001.getError() +Integer.toHexString(replay8001.getAtr().length() / 2) + replay8001.getAtr();
+                        }
+
                         String mPayloads = DESHelper.encryptStr(payloads, skey);
                         String allMAC = DESHelper.encryptStr(mPayloads, mkey);
                         String MAC = allMAC.substring(allMAC.length() - 16, allMAC.length() - 8);
@@ -569,7 +719,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         Replay8001 replay8001 = new Replay8001();
                         replay8001.setAtr(Tools.Bytes2HexString(result8001, result8001.length));
                         replay8001.setSequence(basecmd.getSequence());
-                        replay8001.setPayloads(replay8001.getError() + Integer.toHexString(replay8001.getAtr().length() / 2) + replay8001.getAtr());
+                        if((replay8001.getAtr().length() / 2)<=16)
+                        {
+                            replay8001.setPayloads(replay8001.getError() + MyTools.addZeroForNum(Integer.toHexString(replay8001.getAtr().length() / 2) ,2) + replay8001.getAtr());
+                        }else
+                        {
+                            replay8001.setPayloads(replay8001.getError() + Integer.toHexString(replay8001.getAtr().length() / 2) + replay8001.getAtr());
+                        }
+
                         int len = replay8001.getPayloads().length() / 2;
                         String hex = Integer.toHexString(len).toUpperCase();
                         replay8001.setLength("8" + MyTools.addZeroForNum(hex, 7));
@@ -771,6 +928,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 break;
             case 1005://同步时间
                 mylog.Write("收到1005指令:" + cmddata);
+                Cmd1005 cmd1005=new Cmd1005(basecmd,skey);
+                 DevSettings dev =new DevSettings(MainActivity.this);
+                Date serverdt=new Date(cmd1005.getDatetime());
+                SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                mylog.Write("服务器时间为:" + sdf.format(serverdt));
+                mylog.Write("同步服务器时间结果:"+ dev.setCurrentTime(cmd1005.getDatetime()));
                 String replay1005data = "80000004" + basecmd.getSequence() + "100500000000";
                 socketClient.sendData(Tools.HexString2Bytes(replay1005data));
                 mylog.Write("reply1005=" + replay1005data);
@@ -786,8 +949,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 mylog.Write("生成任务文件=" + "CMD_" + cmd2002.getId() + "_" + cmd2002.getTimestamp() + ".json");
                 mylog.Write("写入任务文件内容=" + cmdjason);
                 Date date = new Date(Long.parseLong(cmd2002.getTimestamp(), 16));//时间戳计算
-                SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-DD hh:mm:ss");
-                mylog.Write(sdf.format(date));
+                SimpleDateFormat sdf1 = new SimpleDateFormat("yyyy-MM-DD hh:mm:ss");
+                mylog.Write(sdf1.format(date));
                 String replay2002data = "80000004" + basecmd.getSequence() + "200200000000";
                 socketClient.sendData(Tools.HexString2Bytes(replay2002data));
                 mylog.Write("reply2002=" + replay2002data);
@@ -899,11 +1062,83 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 // mylog.Write("reply1004长度检查="+replay8002.checkLenth());
                 mylog.Write("发送reply2005完成");
                 tv_connectstate.setText("通讯组件已接入.......");
-                tv_connectstate.setTextColor(getResources().getColor(R.color.green,null));
+                tv_connectstate.setTextColor(getResources().getColor(R.color.DarkGreen,null));
+                Util.playconnect();
+                if(checkDatas())//检查是否有任务
+                {
+                    autoUpdata();
+                }
+
                 break;
         }
     }
+    private void autoUpdata()
+    {
+//        AlertDialog.Builder autoUpdataDialog=new AlertDialog.Builder(this);
+//
+//        autoUpdataDialog.setPositiveButton("确认", new DialogInterface.OnClickListener() {
+//            @Override
+//            public void onClick(DialogInterface dialog, int which) {
+//                mHandler.sendEmptyMessage(7);//提交数据消息
+//            }
+//        });
+//        autoUpdataDialog.setNegativeButton("取消", new DialogInterface.OnClickListener() {
+//            @Override
+//            public void onClick(DialogInterface dialog, int which) {
+//                dialog.dismiss();
+//            }
+//        });
+//
+//        autoUpdataDialog.setMessage("当前有未提交的数据文件,是否提交？");
+//        autoUpdataDialog.setTitle("提示");
+//        autoUpdataDialog.show();
 
+        AlertDialog builder = new AlertDialog.Builder(this)
+                .setTitle("提示:")
+                .setMessage("当前有未提交的数据文件,是否提交？")
+                .setPositiveButton("确定", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        mHandler.sendEmptyMessage(7);//提交数据消息
+                    }
+                })
+                .setNegativeButton("取消", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.dismiss();
+                    }
+                })
+                .show();
+
+        //修改 确定取消 按钮的字体大小
+        builder.getButton(AlertDialog.BUTTON_POSITIVE).setTextSize(24);
+        builder.getButton(DialogInterface.BUTTON_NEGATIVE).setTextSize(24);
+
+        try {
+            //获取mAlert对象
+            Field mAlert = AlertDialog.class.getDeclaredField("mAlert");
+            mAlert.setAccessible(true);
+            Object mAlertController = mAlert.get(builder);
+
+            //获取mTitleView并设置大小颜色
+            Field mTitle = mAlertController.getClass().getDeclaredField("mTitleView");
+            mTitle.setAccessible(true);
+            TextView mTitleView = (TextView) mTitle.get(mAlertController);
+            mTitleView.setTextSize(24);
+            mTitleView.setTextColor(getResources().getColor(R.color.DarkGreen));
+
+            //获取mMessageView并设置大小颜色
+            Field mMessage = mAlertController.getClass().getDeclaredField("mMessageView");
+            mMessage.setAccessible(true);
+            TextView mMessageView = (TextView) mMessage.get(mAlertController);
+            mMessageView.setTextColor(getResources().getColor(R.color.Black));
+            mMessageView.setTextSize(24);
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        } catch (NoSuchFieldException e) {
+            e.printStackTrace();
+        }
+    }
     private void doBusiness(String businessid) {
         if (operator.equals("00000000")) {
             showToast("操作员未登录，不可办理业务！请操作员登录...");
@@ -913,7 +1148,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         //首先删除所有data文件
         Util.play(1,0);//收到业务开始提醒
         TXTReader tr = new TXTReader();
-
         boolean deldatars = tr.delDataFile(this);
         mylog.Write("开始清除历史数据文件=" + deldatars);
         String cmd = tr.getCmdById(MainActivity.this, businessid);
@@ -931,6 +1165,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 superscanintent.putExtra("businessid", businessid);
                 mylog.Write("启动电子签封登记业务界面:");
                 startActivity(superscanintent);
+            //    finish();
                 break;
             case 131074://扫描出库业务
                 Intent outScanintent=new Intent(MainActivity.this, OutScanActivity.class);
@@ -940,6 +1175,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 outScanintent.putExtra("businessid", businessid);
                 mylog.Write("启动电子签封扫描出库界面:");
                 startActivity(outScanintent);
+            //    finish();
                 break;
             case 131075://扫描入库业务
                 Intent enterScanintent=new Intent(MainActivity.this,EnterScanActivity.class);
@@ -949,6 +1185,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 enterScanintent.putExtra("businessid", businessid);
                 mylog.Write("启动电子签封扫描入库界面:");
                 startActivity(enterScanintent);
+            //    finish();
                 break;
             case 131076://签封交接
                 Intent transferintent=new Intent(MainActivity.this,TransferActivity.class);
@@ -958,6 +1195,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 transferintent.putExtra("businessid", businessid);
                 mylog.Write("启动电子签封签封交接界面:");
                 startActivity(transferintent);
+            //    finish();
                 break;
             case 131077://签封分配
                 Intent allotUnPackintent=new Intent(MainActivity.this,AllotUnPackActivity.class);
@@ -967,6 +1205,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 allotUnPackintent.putExtra("businessid", businessid);
                 mylog.Write("启动电子签封签封核对界面:");
                 startActivity(allotUnPackintent);
+             //   finish();
                 break;
             case 131078://签封核对
                 Intent dailyCheckintent=new Intent(MainActivity.this,DailyCheckActivity.class);
@@ -976,6 +1215,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 dailyCheckintent.putExtra("businessid", businessid);
                 mylog.Write("启动电子签封签封核对界面:");
                 startActivity(dailyCheckintent);
+             //   finish();
                 break;
             case 65537://封装业务
                 Intent packageintent = new Intent(MainActivity.this, PackageActivity.class);
@@ -985,6 +1225,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 packageintent.putExtra("businessid", businessid);
                 mylog.Write("启动电子签封封装业务界面:");
                 startActivity(packageintent);
+             //   finish();
                 break;
             case 65538://拆封业务
                 Intent unpackageintent = new Intent(MainActivity.this, UnPackageActivity.class);
@@ -994,6 +1235,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 unpackageintent.putExtra("businessid", businessid);
                 mylog.Write("启动电子签封拆封业务界面:");
                 startActivity(unpackageintent);
+             //   finish();
                 break;
         }
 
@@ -1023,7 +1265,23 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             socketClient.disconnect();
         }
     }
-
+    private boolean checkDatas()
+    {
+        TXTReader tr = new TXTReader();
+        try {
+            //  tr.findLastFile(this,DataDir);
+            String data = tr.findLastFile(MainActivity.this, DataDir);
+            if (data == null) {
+                showToast("没有任务需要提交!");
+                return false;
+            }
+            return true;
+        }catch (Exception e)
+        {
+            mylog.Write("检查任务文件失败，原因:"+e.toString());
+            return false;
+        }
+    }
     //两次退出返回登录
     private static final int TIME_EXIT = 2000;
     private long mBackPressed;
@@ -1064,4 +1322,24 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
         return sbu.toString();
     }
+  //电池显示
+  private void registerBattery() {
+      registerReceiver(batteryChangedReceiver,  new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+  }
+    private void unregisterBattery() {
+        unregisterReceiver(batteryChangedReceiver);
+    }
+
+    // 接受广播
+    private BroadcastReceiver batteryChangedReceiver = new BroadcastReceiver() {
+        public void onReceive(Context context, Intent intent) {
+            if (Intent.ACTION_BATTERY_CHANGED.equals(intent.getAction())) {
+                int level = intent.getIntExtra("level", 0);
+                int scale = intent.getIntExtra("scale", 100);
+                int power = level * 100 / scale;
+                Log.d("Deom", "电池电量：:" + power);
+                mBatteryView.setPower(power);
+            }
+        }
+    };
 }

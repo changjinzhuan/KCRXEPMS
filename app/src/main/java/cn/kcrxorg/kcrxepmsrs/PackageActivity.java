@@ -74,7 +74,6 @@ public class PackageActivity extends BisnessBaseActivity {
             cmdinfo+=b.getPaperTypeName()+" "+b.getVoucherTypeName()+" "+ DecimalTool.formatTosepara(b.getSackMoney())+"元\r\n";
 
         }
-
         tv_cmdinfo.setText(cmdinfo);
         tv_cmdinfo.setTextSize(30);
         tv_cmdinfo.setBackground(getResources().getDrawable(R.drawable.tv_border));
@@ -313,7 +312,7 @@ public class PackageActivity extends BisnessBaseActivity {
                     new Thread() {
                         @Override
                         public void run() {
-                            lockHelper.operateLockGetrs(mHandler,tagidlist,operator,auditor,kuncount*1000,lock);
+                            lockHelper.operateLockGetrs(mHandler,tagidlist,operator,auditor,kuncount*1000,lock,encrypt);
                         }
                     }.start();
 
@@ -324,7 +323,7 @@ public class PackageActivity extends BisnessBaseActivity {
             }
             else//如果是开锁，后续增加异常处理流程
             {
-                lockHelper.operateLockGetrs(mHandler,tagidlist,operator,auditor,0,lock);
+                lockHelper.operateLockGetrs(mHandler,tagidlist,operator,auditor,0,lock,encrypt);
             }
         }
         //封装页面开锁解除异常状态逻辑后续完成...目前不支持开锁

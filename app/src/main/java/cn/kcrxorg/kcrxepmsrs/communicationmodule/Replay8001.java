@@ -1,8 +1,7 @@
 package cn.kcrxorg.kcrxepmsrs.communicationmodule;
 
 public class Replay8001 extends BaseCmd{
-
-      String atr="";
+   String atr="";
 
    public String getError() {
       return error;

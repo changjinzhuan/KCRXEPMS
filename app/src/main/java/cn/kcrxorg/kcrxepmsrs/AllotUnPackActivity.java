@@ -197,14 +197,14 @@ public class AllotUnPackActivity extends BisnessBaseActivity {
     {
         if(lock)//如果是关锁，后续增加异常处理流程
         {
-            lockHelper.operateLockGetrs(mHandler,tagidlist,operator,auditor,20000,lock);
+            lockHelper.operateLockGetrs(mHandler,tagidlist,operator,auditor,20000,lock,encrypt);
         }
         else//
         {
             addRsinfo("正在开锁请稍后...",true);
             new Thread(){
                 public void run(){
-                    lockHelper.operateLockGetrs(mHandler,tagidlist,operator,auditor,0,lock);
+                    lockHelper.operateLockGetrs(mHandler,tagidlist,operator,auditor,0,lock,encrypt);
                 }
             }.start();
         }

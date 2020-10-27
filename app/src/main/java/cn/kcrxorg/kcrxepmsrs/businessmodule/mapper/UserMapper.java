@@ -6,7 +6,9 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.util.Log;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 import cn.kcrxorg.kcrxepmsrs.businessmodule.cmdinfo.User;
 
@@ -68,5 +70,23 @@ public class UserMapper {
         }
 
           return  null;
+    }
+    public List<User> getUsers()
+    {
+        Cursor queryCursor= db.query("T_USER",new String[]{"*"},null,null,null,null,null,null);
+        List userlist=new ArrayList();
+        while(queryCursor.moveToNext())
+        {
+            User user=new User();
+            user.setUid(queryCursor.getString(queryCursor.getColumnIndex("UID")));
+            user.setCid(queryCursor.getString(queryCursor.getColumnIndex("CID")));
+            user.setName(queryCursor.getString(queryCursor.getColumnIndex("NAME")));
+            String p=queryCursor.getString(queryCursor.getColumnIndex("privileges"));
+            String[] ps=p.split(",");
+            user.setPrivileges(ps);
+            userlist.add(user);
+           // return  user;
+        }
+        return userlist;
     }
 }

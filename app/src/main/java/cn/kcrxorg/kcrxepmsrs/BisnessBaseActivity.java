@@ -2,8 +2,10 @@ package cn.kcrxorg.kcrxepmsrs;
 
 import androidx.appcompat.app.AppCompatActivity;
 import cn.kcrxorg.kcrxepmsrs.mbutil.MyLog;
+import cn.kcrxorg.kcrxepmsrs.pasmutil.Config;
 import cn.kcrxorg.kcrxepmsrs.pasmutil.PsamCmdUtil;
 import cn.kcrxorg.kcrxepmsrs.uhfutil.LockHelper;
+import cn.kcrxorg.kcrxepmsrs.ui.login.LoginActivity;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -76,6 +78,8 @@ public class BisnessBaseActivity extends AppCompatActivity {
     private SharedPreferences mSharedPreferences;
     private SharedPreferences.Editor mEditor;
 
+    //加密设置
+    public  boolean encrypt=true;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -83,8 +87,30 @@ public class BisnessBaseActivity extends AppCompatActivity {
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                 WindowManager.LayoutParams.FLAG_FULLSCREEN);
         setContentView(R.layout.activity_bisness_base);
+        //初始化配置
+        mSharedPreferences = getSharedPreferences("UHF",MODE_PRIVATE);
 
+        encrypt=mSharedPreferences.getBoolean("encrypt",true);
+       // showToast("目前加密模式是:"+encrypt);
         tv_header=findViewById(R.id.tv_header);
+        tv_header.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override
+            public boolean onLongClick(View v) {
+                if(encrypt)
+                {
+                    encrypt=false;
+                    showToast("解除加密模式");
+                }else
+                {
+                    encrypt=true;
+                    showToast("进入加密模式");
+                }
+                mEditor=mSharedPreferences.edit();
+                mEditor.putBoolean("encrypt", encrypt);
+                mEditor.commit();
+                return true;
+            }
+        });
         tv_operinfo=findViewById(R.id.tv_operinfo);
         tv_footer=findViewById(R.id.tv_footer);
         tv_kuncount=findViewById(R.id.tv_kuncout);
@@ -104,8 +130,7 @@ public class BisnessBaseActivity extends AppCompatActivity {
         mylog=new MyLog(this,10000,1);
         //mylog.Write(this.getClass()+"业务启动！*****************************");
 
-        //初始化功率配置
-        mSharedPreferences = getSharedPreferences("UHF",MODE_PRIVATE);
+
 
         //注册按钮
         //注册按键广播
@@ -219,17 +244,36 @@ public class BisnessBaseActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        //启动天线
-        uHFRManager=UHFRManager.getInstance();
-        psamCmdUtil=new PsamCmdUtil();
-        psamCmdUtil.openRfid();
-        lockHelper=new LockHelper(mHandler,psamCmdUtil,uHFRManager);
+        bootDevice();
         mylog.Write("恢复完成");
+    }
+
+    @Override
+    public void onBackPressed() {
+        super.onBackPressed();
+    //    Intent mainintent=new Intent(this, MainActivity.class);
+    }
+
+    public void bootDevice()
+    {
+        new Thread(){
+            @Override
+            public void run() {
+                super.run();
+                //启动天线
+                uHFRManager=UHFRManager.getInstance();
+                psamCmdUtil=new PsamCmdUtil();
+                psamCmdUtil.openRfid();
+
+                lockHelper=new LockHelper(mHandler,psamCmdUtil,uHFRManager);
+            }
+        }.start();
     }
     public void readCard() {
         int readpower=mSharedPreferences.getInt("readPower",25);
         Log.e("kcrx","开始扫描款包,读取功率："+readpower);
         lockHelper.readCARD(mHandler,readpower,10);
+
     }
 
     //show tips
@@ -249,6 +293,7 @@ public class BisnessBaseActivity extends AppCompatActivity {
         rstv.setMarqueeRepeatLimit(Integer.MAX_VALUE);
 //        rstv.setFocusable(true);
         rstv.setEllipsize(TextUtils.TruncateAt.MARQUEE);
+
         rstv.setSingleLine();
 //        rstv.setFocusableInTouchMode(true);
 //        rstv.setHorizontallyScrolling(true);
@@ -258,11 +303,12 @@ public class BisnessBaseActivity extends AppCompatActivity {
         if(rs)
         {
             rstv.setBackground(getDrawable(R.drawable.tv_goodinfo));
-
+            rstv.setTextColor(getResources().getColor(R.color.Black));
         }else
         {
-            rstv.setBackground(getDrawable(R.drawable.tv_badinfo));
 
+            rstv.setBackground(getDrawable(R.drawable.tv_badinfo));
+            rstv.setTextColor(getResources().getColor(R.color.TextWhite));
         }
         //语音播报提示
         rstv.setOnClickListener(new View.OnClickListener() {

@@ -36,6 +36,15 @@ public class NetChecker extends Thread {
             if(nowstate!=isconnect)
             {
                 isconnect=nowstate;
+                if(isconnect==true)
+                {
+                    try {
+                        Thread.sleep(3000);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+
                 Message msg = new Message();
                 msg.what = 100;//网络消息
                 Bundle b = new Bundle();
@@ -79,9 +88,11 @@ public class NetChecker extends Thread {
     //判断网线拔插状态
     //通过命令cat /sys/class/net/eth0/carrier，如果插有网线的话，读取到的值是1，否则为0
     public boolean isWirePluggedIn(){
-        String state= execCommand("cat /sys/class/net/wlan0/carrier");
-       // String state= execCommand("cat /sys/class/net/eth0/carrier");
-        if(state.trim().equals("1")){  //有网线插入时返回1，拔出时返回0
+        //String state= execCommand("cat /sys/class/net/wlan0/carrier");
+        String state= execCommand("cat /sys/class/net/eth0/carrier");
+      //  String wifistate=execCommand("cat /sys/class/net/wlan0/carrier");
+      //  if(state.trim().equals("1")||wifistate.trim().equals("1")){  //有网线插入时返回1，拔出时返回0
+        if(state.trim().equals("1")){
             return true;
         }
         return false;

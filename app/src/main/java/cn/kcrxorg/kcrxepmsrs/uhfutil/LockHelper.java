@@ -11,6 +11,7 @@ import com.uhf.api.cls.Reader;
 
 import cn.kcrxorg.kcrxepmsrs.Util;
 import cn.kcrxorg.kcrxepmsrs.mbutil.MyLog;
+import cn.kcrxorg.kcrxepmsrs.pasmutil.Config;
 import cn.kcrxorg.kcrxepmsrs.pasmutil.HexUtil;
 import cn.kcrxorg.kcrxepmsrs.pasmutil.PsamError;
 import java.text.SimpleDateFormat;
@@ -39,6 +40,7 @@ public  class LockHelper {
 
     private Handler mHandler;
     private MyLog myLog;
+    Config config;
     public LockHelper(Handler handler,PsamCmdUtil mpsam,UHFRManager UhfrManager)
     {
         mHandler=handler;
@@ -490,7 +492,7 @@ public  class LockHelper {
         //启动天线读取
         //启动天线读取
         mUhfrManager.setCancleInventoryFilter();
-        mUhfrManager.setPower(5,5);
+        mUhfrManager.setPower(10,5);
         List<Reader.TAGINFO> list1;
         list1 = mUhfrManager.tagInventoryByTimer((short) 100);
         //过滤非法及未上电标签
@@ -948,13 +950,13 @@ public  class LockHelper {
     }
 
     String epc = "481F22811100008200662700";
-    public  void operateLockGetrs(Handler mHandler, List<String> tagidlist, String operatorstr, String auditorstr, int num, boolean lock)
+    public  void operateLockGetrs(Handler mHandler, List<String> tagidlist, String operatorstr, String auditorstr, int num, boolean lock,boolean encrypt)
     {
         sendLockMes(mHandler, "开始执行关锁*******",LOCK_LOG_WHAT);
         sendLockMes(mHandler, "1、开始寻锁",LOCK_LOG_WHAT);
         mUhfrManager.setCancleInventoryFilter();
 //        mUhfrManager = UHFRManager.getInstance();
-        mUhfrManager.setPower(5, 5);
+        mUhfrManager.setPower(10, 15);
         List<Reader.TAGINFO> list1;
         list1 = mUhfrManager.tagInventoryByTimer((short) 50);
 
@@ -1050,7 +1052,11 @@ public  class LockHelper {
         }
         if (result != null) {
             cmd = Tools.Bytes2HexString(result, result.length);
-            sendLockMes(mHandler, "获取开关锁指令成功：" + Tools.Bytes2HexString(result, result.length),LOCK_LOG_WHAT);
+            if(encrypt)
+            {
+                cmd=cmdBytesXor(cmd);
+            }
+            sendLockMes(mHandler, "获取开关锁指令成功：" + cmd,LOCK_LOG_WHAT);
         } else {
            // sendMes(mHandler, "获取指令失败，错误码：" + err.getErrCode());
             sendLockMes(mHandler, "获取开关锁指令失败，错误码：" + err.getErrCode(),LOCK_WHAT);
@@ -1193,6 +1199,20 @@ public  class LockHelper {
         {
             sendUHFMes(mHandler,"");
         }
+    }
+    private String cmdBytesXor(String cmdstr)
+    {
+        sendMes("加密前命令="+cmdstr);
+        String xordata="4b6372784038383838323032303038303531313435313945";
+        byte[] cmdbytes= HexUtil.hexStringToBytes(cmdstr);
+        byte[] xorbytes=HexUtil.hexStringToBytes(xordata);
+        for(int i=0;i<cmdbytes.length;i++)
+        {
+            cmdbytes[i]=(byte)(cmdbytes[i]^xorbytes[i]);
+        }
+        String psword=HexUtil.bytesToHexString(cmdbytes);
+        sendMes("加密后命令="+psword);
+        return psword;
     }
 
     private static void sendUHFMes(Handler mHandler, String mes) {
