@@ -24,11 +24,14 @@ import java.util.Date;
 import java.util.List;
 
 import cn.kcrxorg.kcrxepmsrs.businessmodule.cmdinfo.OutScanCMD;
+import cn.kcrxorg.kcrxepmsrs.businessmodule.cmdinfo.ViewCmdInfo;
 import cn.kcrxorg.kcrxepmsrs.businessmodule.cmdinfo.outScanBusiInfo;
 import cn.kcrxorg.kcrxepmsrs.businessmodule.cmdinfo.outScanStockPackInfo;
+import cn.kcrxorg.kcrxepmsrs.businessmodule.cmdinfo.paymentSack;
 import cn.kcrxorg.kcrxepmsrs.businessmodule.datainfo.OutScanData;
 import cn.kcrxorg.kcrxepmsrs.businessmodule.datainfo.transferData;
 import cn.kcrxorg.kcrxepmsrs.mbutil.DecimalTool;
+import cn.kcrxorg.kcrxepmsrs.mbutil.TXTReader;
 import cn.kcrxorg.kcrxepmsrs.mbutil.TXTWriter;
 import cn.kcrxorg.kcrxepmsrs.pasmutil.cn.kcrx.bean.TagEpcData;
 import cn.kcrxorg.kcrxepmsrs.pasmutil.rfidtool.EpcReader;
@@ -58,8 +61,9 @@ public class OutScanActivity extends BisnessBaseActivity {
         super.onCreate(savedInstanceState);
         initView();
         allcarddata=new ArrayList<>();
-        String cmddata=getIntent().getStringExtra("cmddata");
+        TXTReader tr = new TXTReader();
         businessid=getIntent().getStringExtra("businessid");
+        String cmddata = tr.getCmdById(OutScanActivity.this, businessid);
 
         outScanCMD= JSONObject.parseObject(cmddata, OutScanCMD.class);
 
@@ -149,6 +153,19 @@ public class OutScanActivity extends BisnessBaseActivity {
         saninfo.setBackground(getResources().getDrawable(R.drawable.tv_border));
         line_businfo.addView(saninfo);
 
+        //初始化查看任务列表
+        viewCmdInfoList=new ArrayList<ViewCmdInfo>();
+        for(outScanStockPackInfo stockPackInfo:outScanCMD.getStockPackInfoList())
+        {
+        //    tagidlist.add(stockPackInfo.getSackNo());
+            ViewCmdInfo viewCmdInfo=new ViewCmdInfo();
+            viewCmdInfo.setSackNo(stockPackInfo.getSackNo());
+            viewCmdInfo.setPaperTypeName(stockPackInfo.getPaperTypeName());
+            viewCmdInfo.setVoucherTypeName(stockPackInfo.getVoucherTypeName());
+            viewCmdInfo.setVal(stockPackInfo.getVal());
+            viewCmdInfoList.add(viewCmdInfo);
+        }
+
         mHandler = new Handler() {
             @Override
             public void handleMessage(Message msg) {
@@ -184,6 +201,13 @@ public class OutScanActivity extends BisnessBaseActivity {
 
                             outScanStockPackInfo outScanStockPackInfo = selectScanStockPackInfo(tagEpcData);
                             outScanBusiInfo thisoutScanBusiInfo=  getoutScanBusiInfo(outScanStockPackInfo);
+                            if(thisoutScanBusiInfo==null)
+                            {
+                                addRsinfo("读取到封签:"+tagEpcData.getTagid()+outScanStockPackInfo.getPaperTypeName()+" "+outScanStockPackInfo.getVoucherTypeName()+"任务金额不足",false);
+                                mylog.Write("读取到封签:"+tagEpcData.getTagid()+outScanStockPackInfo.getPaperTypeName()+" "+outScanStockPackInfo.getVoucherTypeName()+"任务金额不足");
+                                Util.playErr();
+                                return;
+                            }
 //                            Log.e("kcrx","thisoutScanBusiInfo.getTotalMoney()="+thisoutScanBusiInfo.getTotalMoney());
 //                            Log.e("kcrx","outScanStockPackInfo.getSackMoney()="+outScanStockPackInfo.getSackMoney());
 //                            Log.e("kcrx","compareTo="+thisoutScanBusiInfo.getTotalMoney().compareTo(outScanStockPackInfo.getSackMoney()));
@@ -218,6 +242,7 @@ public class OutScanActivity extends BisnessBaseActivity {
                             Util.playOk();
                             saninfo.setText("已出库"+isgood+"袋");
 
+                            setGoodViewCmdInfo(tagEpcData.getTagid()+"");//设置任务列表
 
                             transferData transferData=new transferData();
                             transferData.setSackNo(tagEpcData.getTagid()+"");
@@ -272,7 +297,7 @@ public class OutScanActivity extends BisnessBaseActivity {
 
     }
     private void initView() {
-        tv_header.setText("电子签封出库");
+        tv_header.setCenterString("电子签封出库");
         tv_operinfo.setText("请按【扫描】进行出库扫描或按【取消】结束任务");
         tv_footer.setText("请按【扫描】进行出库扫描或按【取消】结束任务");
         line_kun.removeAllViews();
@@ -283,7 +308,6 @@ public class OutScanActivity extends BisnessBaseActivity {
             //如果本币种金额仍然有必出存在
             if(os.getPaperTypeID().equals(outScanStockPackInfo.getPaperTypeID())&&os.getVoucherTypeID().equals(outScanStockPackInfo.getVoucherTypeID())&&os.getMustOutFlag().equals("1"))
             {
-
                 return true;
             }
         }

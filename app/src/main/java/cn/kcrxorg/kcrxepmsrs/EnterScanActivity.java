@@ -19,11 +19,14 @@ import java.util.Date;
 import java.util.List;
 
 import cn.kcrxorg.kcrxepmsrs.businessmodule.cmdinfo.EnterScanCMD;
+import cn.kcrxorg.kcrxepmsrs.businessmodule.cmdinfo.ViewCmdInfo;
+import cn.kcrxorg.kcrxepmsrs.businessmodule.cmdinfo.dailyCheckStock;
 import cn.kcrxorg.kcrxepmsrs.businessmodule.cmdinfo.paymentSack;
 import cn.kcrxorg.kcrxepmsrs.businessmodule.cmdinfo.stackInfo;
 import cn.kcrxorg.kcrxepmsrs.businessmodule.datainfo.EnterScanData;
 import cn.kcrxorg.kcrxepmsrs.businessmodule.datainfo.enterScanPackInfo;
 import cn.kcrxorg.kcrxepmsrs.mbutil.DecimalTool;
+import cn.kcrxorg.kcrxepmsrs.mbutil.TXTReader;
 import cn.kcrxorg.kcrxepmsrs.mbutil.TXTWriter;
 import cn.kcrxorg.kcrxepmsrs.pasmutil.cn.kcrx.bean.TagEpcData;
 import cn.kcrxorg.kcrxepmsrs.pasmutil.rfidtool.EpcReader;
@@ -50,8 +53,9 @@ public class EnterScanActivity extends BisnessBaseActivity {
         initView();
 
         allcarddata=new ArrayList<>();
-        String cmddata=getIntent().getStringExtra("cmddata");
+        TXTReader tr = new TXTReader();
         businessid=getIntent().getStringExtra("businessid");
+        String cmddata = tr.getCmdById(EnterScanActivity.this, businessid);
 
         enterScanCMD= JSONObject.parseObject(cmddata, EnterScanCMD.class);
 
@@ -81,9 +85,6 @@ public class EnterScanActivity extends BisnessBaseActivity {
         saninfo.setBackground(getResources().getDrawable(R.drawable.tv_border));
         line_businfo.addView(saninfo);
 
-
-
-
         //库间列表选择
         sp_stackInfo=new Spinner(this);
 
@@ -104,6 +105,18 @@ public class EnterScanActivity extends BisnessBaseActivity {
         line_kun.addView(sp_stackInfo);
 
       //  mylog.Write("当前选择的是="+sp_stackInfo.getSelectedItem().toString());
+
+        //初始化查看任务列表
+        viewCmdInfoList=new ArrayList<ViewCmdInfo>();
+        for(paymentSack stockPackInfo:enterScanCMD.getPaymentSackList())
+        {
+            ViewCmdInfo viewCmdInfo=new ViewCmdInfo();
+            viewCmdInfo.setSackNo(stockPackInfo.getSackNo());
+            viewCmdInfo.setPaperTypeName(stockPackInfo.getPaperTypeName());
+            viewCmdInfo.setVoucherTypeName(stockPackInfo.getVoucherTypeName());
+            viewCmdInfo.setVal(stockPackInfo.getVal());
+            viewCmdInfoList.add(viewCmdInfo);
+        }
 
         mHandler = new Handler() {
             @Override
@@ -142,6 +155,8 @@ public class EnterScanActivity extends BisnessBaseActivity {
                             Util.playOk();
                             saninfo.setText("已扫描"+isgood+"袋");
 
+                            setGoodViewCmdInfo(tagEpcData.getTagid()+"");//设置任务列表
+
                             enterScanPackInfo enterScanPackInfo = new enterScanPackInfo();
                             enterScanPackInfo.setSackNo(tagEpcData.getTagid()+"");
                             enterScanPackInfo.setVoucherTypeID(nowpaymentSack.getVoucherTypeID());
@@ -172,7 +187,7 @@ public class EnterScanActivity extends BisnessBaseActivity {
     }
     public void initView()
     {
-        tv_header.setText("电子签封入库");
+        tv_header.setCenterString("电子签封入库");
         tv_operinfo.setText("请先选择入库库间,按【扫描】进行入库扫描或按【取消】结束任务");
         tv_footer.setText("请先选择入库库间,按【扫描】进行入库扫描或按【取消】结束任务");
         line_kun.removeAllViews();//清除捆数显示，准备显示库间列表

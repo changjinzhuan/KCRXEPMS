@@ -40,7 +40,7 @@ public class UserLGtool {
        
 //       serverFactory.setUserManager(userManagerFactory.createUserManager());
        // set the port of the listener
-       File dataRoot = mContext.getFilesDir();
+       File dataRoot =mContext.getDataDir();
 	   myPath = dataRoot.getPath();
        BaseUser user = new BaseUser();
        user.setName("kcrx");

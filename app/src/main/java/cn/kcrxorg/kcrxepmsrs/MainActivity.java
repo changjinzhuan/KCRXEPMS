@@ -62,6 +62,7 @@ import android.widget.Toast;
 import com.BRMicro.Tools;
 import com.alibaba.fastjson.JSONObject;
 import com.android.rfid.DevSettings;
+import com.tencent.mmkv.MMKV;
 import com.vilyever.socketclient.SocketClient;
 import com.vilyever.socketclient.helper.SocketClientDelegate;
 import com.vilyever.socketclient.helper.SocketResponsePacket;
@@ -126,6 +127,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
      //handler
     Handler mHandler;
     Config config;
+
+    //连接状态
+  //  boolean isConnecting=false;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -166,11 +170,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         if (!DataDirF.exists()) {
             DataDirF.mkdir();
         }
-
         //初始化数据库
         userMapper = new UserMapper(this);
-
-
         //获取登录用户 UID
         String operatorCID = getIntent().getStringExtra("operator");
         String auditorCID = getIntent().getStringExtra("auditor");
@@ -209,7 +210,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 super.handleMessage(msg);
                 switch (msg.what){
                     case 7://自动提交消息
-                       onClick(btn_select);
+                        onClick(btn_select);
                         break;
                     case 100://自动连接
                         mylog.Write("网路状态:" + msg.getData().getBoolean("netstate"));
@@ -217,12 +218,19 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         {
                            btn_connect.setEnabled(true);
                            btn_select.setEnabled(true);
-                           onClick(btn_connect);
-                           break;
+//                           if(!isConnecting)//如果未在连接状态
+//                           {
+                            //   isConnecting=true;
+                               onClick(btn_connect);
+                               break;
+                          // }
+                          // mylog.Write("通讯组件正在连接中...不再发起连接...");
+                           // break;
                         }
                         btn_connect.setEnabled(false);
                         btn_select.setEnabled(false);
                         Util.playbreak();
+                    //    isConnecting=false;
                         break;
                 }
             }
@@ -233,6 +241,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         netChecker.start();
         mylog.Write("网络监控已经启动");
     }
+
 
     private void intView() {
         btn_connect = findViewById(R.id.btn_connect);
@@ -256,6 +265,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     protected void onPause() {
         super.onPause();
         unregisterBattery();
+        if(socketClient!=null)
+        {
+             if(socketClient.isConnected()){
+            socketClient.disconnect();
+        }
+        }
+
+
      //   mylog.Write("主界面已暂停!");
      //   if(socketClient!=null)
      //   socketClient.disconnect();
@@ -283,16 +300,17 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     public void connect()
     {
-        String info = config.getValue("serverIp")+"_50002";
+        String serverip= MMKV.defaultMMKV().decodeString("serverurl", MyApp.DEFAULT_SERVER_URL);
+        String info =serverip+"_50002";
         try {
             mylog.Write(R.string.connecting+"ip="+info);
             startSocketClient(info);
             tv_connectstate.setText(R.string.connecting);
             mylog.Write(getResources().getString(R.string.connecting));
         } catch (IOException e) {
-            tv_connectstate.setText("连接失败！");
-            mylog.Write("连接失败!");
-            e.printStackTrace();
+            tv_connectstate.setText("连接失败！"+e.getMessage());
+            mylog.Write("连接失败!"+e.getMessage());
+
         }
     }
     @Override
@@ -310,10 +328,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     showToast("通讯组件未连接，无法提交！请先连接通讯组件");
                     break;
                 }
-
                 businessstate = 1;
                 if (businessstate == 1)//如果是业务完成状态
                 {
+                    mylog.Write("准备开始提交数据.....");
                     TXTReader tr = new TXTReader();
                     try {
                         //  tr.findLastFile(this,DataDir);
@@ -355,7 +373,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
                             String operhex = Tools.Bytes2HexString(HexUtil.intToBytes(oper), HexUtil.intToBytes(oper).length);
                             String aduithex = Tools.Bytes2HexString(HexUtil.intToBytes(aduit), HexUtil.intToBytes(aduit).length);
-                            ;
+
                             mylog.Write("operhex=" + operhex);
                             mylog.Write("aduithex=" + aduithex);
 
@@ -428,10 +446,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private void upDataCard() {
         try {
             Replay4003 replay4003=new Replay4003();
-            String aid=config.getValue("stackCode");
-            if(aid==null||aid.equals(""))//库间配置为空
+         //   String aid=config.getValue("stackCode");
+            String aid="73205001010102";
+            int productclass=MMKV.defaultMMKV().getInt("produckid",MyApp.DEFAULT_PRODUCKCLASS);
+            if(productclass==0)//当前为人行端
             {
-                mylog.Write("stackCode库间编号未配置，不提交刷卡信息");
+                mylog.Write("当前为人行端，不提交刷卡信息");
                 return;
             }
             mylog.Write("stackCode库间编号" + aid);
@@ -443,7 +463,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 mylog.Write("未同步用户信息，不提交刷卡信息");
                 return;
             }
-           // String users=config.getValue("users");//卡号冒号隔开
             String useruid=userList.get(0).getUid();
             mylog.Write("users用户UID信息" + useruid);
             int cardnums=Integer.valueOf(useruid);
@@ -487,7 +506,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         socketClient.getAddress().setRemotePort(Integer.parseInt(array[1]));//设置端口
         socketClient.getAddress().setConnectionTimeout(15 * 1000);//设置超时时间
 
-
         socketClient.setCharsetName(CharsetUtil.UTF_8);//设置编码格式，默认为UTF-8
         socketClient.connect(); // 连接，异步进行
 
@@ -498,11 +516,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
               //  tv_connectstate.setTextColor(getResources().getColor(R.color.green));
                 mylog.Write("socket连接成功=" + client.getState());
                 btn_connect.setEnabled(false);
+              //  isConnecting=false;
             }
 
             @Override
             public void onDisconnected(SocketClient client) {
-                mylog.Write("socket连接断开");
+             //   isConnecting=false;
+                mylog.Write("socket连接断开"+client.getState());
                 tv_connectstate.setText("通讯组件未连接...");
                 tv_connectstate.setTextColor(getResources().getColor(R.color.red));
                 btn_connect.setEnabled(true);
@@ -513,7 +533,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 byte[] data = responsePacket.getData();
                 //  MyLogger.show("kcrx","data=" + Tools.Bytes2HexString(data,data.length));
                 mylog.Write("recv<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
-
                 String datastr=TXTReader.byteArrToHex(data);
                 mylog.Write("收到通讯组件data=" + datastr);
                 BaseCmd baseCmd = CmdSelector.makeCmd(datastr);
@@ -521,16 +540,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     mylog.Write("收到通讯组件命令:" + baseCmd.getTransport());
                     if (!baseCmd.checkLenth())//命令检查未通过
                     {
-                        // MyLogger.show("kcrx","长度检查:"+baseCmd.checkLenth()) ;
                         mylog.Write("长度检查:命令长度错误");
-
                         if(true)//所有长度有问题命令都检查粘包
                         {
                             mylog.Write("可能粘包，拆分任务...");
                             try {
                             String hexdata= datastr;
                             int lenpayload4002=Integer.parseInt(hexdata.substring(1,8),16);
-
                             String dataone=hexdata.substring(0,28+lenpayload4002*2);
                             String datatwo=hexdata.substring(28+lenpayload4002*2);
                             mylog.Write("dataone="+dataone);
@@ -568,9 +584,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     {
                         try {
 
-                            executeCmd(baseCmd, Tools.Bytes2HexString(data, data.length));
+                         //   executeCmd(baseCmd, Tools.Bytes2HexString(data, data.length));
+                            executeCmd(baseCmd, datastr);
                         } catch (Exception e) {
-                            mylog.Write("执行命令失败:" + Tools.Bytes2HexString(data, data.length));
+                            mylog.Write("执行命令失败:" + datastr);
                             mylog.Write("执行命令失败:" + e.toString());
                             showToast("执行命令失败!");
                         }
@@ -635,7 +652,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 Cmd1002 cmd1002=new Cmd1002(basecmd);
                 if(cmd1002.getLevel().equals("02"))
                 {
-                     tv_connectstate.setText("错误:"+cmd1002.getMessage());
+                    tv_connectstate.setText("错误:"+cmd1002.getMessage());
                     mylog.Write("错误:"+cmd1002.getMessage());
                 }else if(cmd1002.getLevel().equals("01"))
                 {
@@ -741,8 +758,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 } else if (cmd8001.getAction().equals("02"))//下电
                 {
                     mylog.Write("下电指令");
-                    psam.closeRfid();
-                    mylog.Write("下电指令完成");
+                    //psam.closeRfid();
+                    mylog.Write("下电指令完成*");
 
                     if (basecmd.getLength().startsWith("7"))//加密回复
                     {
@@ -871,6 +888,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                             mylog.Write("cmdstr=" + cmdstr);
                             rapdu = psam.excute(psamCard, cmdstr, err8002);
                         } else {
+                            mylog.Write("任务不存在！无法完成控制数据处理");
                             throw new Exception("任务不存在！无法完成控制数据处理");
                         }
                     }
@@ -878,6 +896,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 {
                     String cmdstr = cmd8002.getCAPDU();
                     rapdu = psam.excute(psamCard, cmdstr, err8002);
+                    if(rapdu==null||rapdu.equals(""))
+                    {
+                        mylog.Write("apdu指令执行失败:"+cmdstr);
+                        tv_connectstate.setText("安全令牌验证失败,请重启通讯组件....");
+                        return;
+                    }
                 }
                 //回复通讯组件
                 if (basecmd.getLength().startsWith("7"))//加密回复
@@ -929,7 +953,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             case 1005://同步时间
                 mylog.Write("收到1005指令:" + cmddata);
                 Cmd1005 cmd1005=new Cmd1005(basecmd,skey);
-                 DevSettings dev =new DevSettings(MainActivity.this);
+                DevSettings dev =new DevSettings(MainActivity.this);
                 Date serverdt=new Date(cmd1005.getDatetime());
                 SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
                 mylog.Write("服务器时间为:" + sdf.format(serverdt));
@@ -1149,7 +1173,16 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         Util.play(1,0);//收到业务开始提醒
         TXTReader tr = new TXTReader();
         boolean deldatars = tr.delDataFile(this);
-        mylog.Write("开始清除历史数据文件=" + deldatars);
+        mylog.Write("清除历史数据文件=" + deldatars);
+       List<String> oldfilenames= tr.clearCmdFile(this);
+       if(oldfilenames.size()>0)
+       {
+           for(String s:oldfilenames)
+           {
+               mylog.Write("清除过期任务文件"+s);
+           }
+       }
+
         String cmd = tr.getCmdById(MainActivity.this, businessid);
         mylog.Write("查找到业务数据=" + cmd);
         JSONObject jsonObject = JSONObject.parseObject(cmd);
@@ -1157,21 +1190,34 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         mylog.Write("查找到业务数据code=" + cmdcode);
 
         switch (cmdcode) {
-            case 131073://电子签封登记业务
-                Intent superscanintent = new Intent(MainActivity.this, SuperScanActivty.class);
-                superscanintent.putExtra("operator", operator);
-                superscanintent.putExtra("auditor", auditor);
-                superscanintent.putExtra("cmddata", cmd);
-                superscanintent.putExtra("businessid", businessid);
-                mylog.Write("启动电子签封登记业务界面:");
-                startActivity(superscanintent);
+            case 131073://电子签封登记业务//这里需要区分命令版本>1.03?
+                 if(jsonObject.containsKey("packInfoList"))//这是1.04以上版本协议
+                 {
+                     Intent superscanintent104 = new Intent(MainActivity.this, SuperScanActivty104.class);
+                     superscanintent104.putExtra("operator", operator);
+                     superscanintent104.putExtra("auditor", auditor);
+                     superscanintent104.putExtra("cmddata", cmd);
+                     superscanintent104.putExtra("businessid", businessid);
+                     mylog.Write("启动电子签封登记业务界面,协议版本1.04+:");
+                     startActivity(superscanintent104);
+                 }else if(jsonObject.containsKey("stackInfoList"))//这是1.03协议
+                 {
+
+                     Intent superscanintent = new Intent(MainActivity.this, SuperScanActivty.class);
+                     superscanintent.putExtra("operator", operator);
+                     superscanintent.putExtra("auditor", auditor);
+                     superscanintent.putExtra("cmddata", cmd);
+                     superscanintent.putExtra("businessid", businessid);
+                     mylog.Write("启动电子签封登记业务界面,协议版本1.03:");
+                     startActivity(superscanintent);
+                 }
             //    finish();
                 break;
             case 131074://扫描出库业务
                 Intent outScanintent=new Intent(MainActivity.this, OutScanActivity.class);
                 outScanintent.putExtra("operator", operator);
                 outScanintent.putExtra("auditor", auditor);
-                outScanintent.putExtra("cmddata", cmd);
+               // outScanintent.putExtra("cmddata", cmd);
                 outScanintent.putExtra("businessid", businessid);
                 mylog.Write("启动电子签封扫描出库界面:");
                 startActivity(outScanintent);
@@ -1181,7 +1227,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 Intent enterScanintent=new Intent(MainActivity.this,EnterScanActivity.class);
                 enterScanintent.putExtra("operator", operator);
                 enterScanintent.putExtra("auditor", auditor);
-                enterScanintent.putExtra("cmddata", cmd);
+              //  enterScanintent.putExtra("cmddata", cmd);
                 enterScanintent.putExtra("businessid", businessid);
                 mylog.Write("启动电子签封扫描入库界面:");
                 startActivity(enterScanintent);
@@ -1191,7 +1237,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 Intent transferintent=new Intent(MainActivity.this,TransferActivity.class);
                 transferintent.putExtra("operator", operator);
                 transferintent.putExtra("auditor", auditor);
-                transferintent.putExtra("cmddata", cmd);
+             //   transferintent.putExtra("cmddata", cmd);
                 transferintent.putExtra("businessid", businessid);
                 mylog.Write("启动电子签封签封交接界面:");
                 startActivity(transferintent);
@@ -1201,7 +1247,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 Intent allotUnPackintent=new Intent(MainActivity.this,AllotUnPackActivity.class);
                 allotUnPackintent.putExtra("operator", operator);
                 allotUnPackintent.putExtra("auditor", auditor);
-                allotUnPackintent.putExtra("cmddata", cmd);
+             //   allotUnPackintent.putExtra("cmddata", cmd);
                 allotUnPackintent.putExtra("businessid", businessid);
                 mylog.Write("启动电子签封签封核对界面:");
                 startActivity(allotUnPackintent);
@@ -1211,11 +1257,29 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 Intent dailyCheckintent=new Intent(MainActivity.this,DailyCheckActivity.class);
                 dailyCheckintent.putExtra("operator", operator);
                 dailyCheckintent.putExtra("auditor", auditor);
-                dailyCheckintent.putExtra("cmddata", cmd);
+             //   dailyCheckintent.putExtra("cmddata", cmd);
                 dailyCheckintent.putExtra("businessid", businessid);
                 mylog.Write("启动电子签封签封核对界面:");
                 startActivity(dailyCheckintent);
              //   finish();
+                break;
+            case 131080://空电子签封入库
+                Intent emptyEnterScanintent=new Intent(MainActivity.this,EmptyEnterScanActivity.class);
+                emptyEnterScanintent.putExtra("operator", operator);
+                emptyEnterScanintent.putExtra("auditor", auditor);
+             //   emptyEnterScanintent.putExtra("cmddata", cmd);
+                emptyEnterScanintent.putExtra("businessid", businessid);
+                mylog.Write("启动空电子签封入库界面:");
+                startActivity(emptyEnterScanintent);
+                break;
+            case 131081://签封入库核对
+                Intent entercheckintent=new Intent(MainActivity.this,EnterCheckActivity.class);
+                entercheckintent.putExtra("operator", operator);
+                entercheckintent.putExtra("auditor", auditor);
+              //  entercheckintent.putExtra("cmddata", cmd);
+                entercheckintent.putExtra("businessid", businessid);
+                mylog.Write("启动签封入库核对界面:");
+                startActivity(entercheckintent);
                 break;
             case 65537://封装业务
                 Intent packageintent = new Intent(MainActivity.this, PackageActivity.class);
@@ -1342,4 +1406,5 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             }
         }
     };
+
 }

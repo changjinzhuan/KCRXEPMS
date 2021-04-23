@@ -12,6 +12,8 @@ import cn.kcrxorg.kcrxepmsrs.communicationmodule.BaseCmd;
 import cn.kcrxorg.kcrxepmsrs.communicationmodule.Cmd2002;
 import cn.kcrxorg.kcrxepmsrs.communicationmodule.CmdSelector;
 import cn.kcrxorg.kcrxepmsrs.mbutil.MyLog;
+import cn.kcrxorg.kcrxepmsrs.pasmutil.PsamCmdUtil;
+import cn.kcrxorg.kcrxepmsrs.pasmutil.PsamError;
 import cn.kcrxorg.kcrxepmsrs.pasmutil.cn.kcrx.bean.TagEpcData;
 import cn.kcrxorg.kcrxepmsrs.pasmutil.rfidtool.EpcReader;
 
@@ -34,30 +36,60 @@ public class ExampleInstrumentedTest {
     private String session;
 
     private MyLog mylog;
+
     @Test
     public void useAppContext() {
         // Context of the app under test.
         Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
 
-        assertEquals("cn.kcrxorg.kcrxepms", appContext.getPackageName());
+      //  assertEquals("cn.kcrxorg.kcrxepms", appContext.getPackageName());
 
+        PsamError err8002 = new PsamError();
+        PsamCmdUtil psam=new PsamCmdUtil();
+        psam.openRfid();
+        PsamError err = new PsamError();
+        byte[] result = null;
+        //复位
+        result = psam.resetCard(1);
+        if (result != null) {
+            Log.e("test","复位PSAM卡：" + Tools.Bytes2HexString(result, result.length));
+        } else {
+
+            Log.e("test","复位PSAM卡失败");
+            // Util.play(3, 0);
+        }
+        //用户验证
+        boolean flag = psam.verifyUser(1,
+                Tools.HexString2Bytes("5053414D49303031"),
+                Tools.HexString2Bytes("4D494D49535F5053414D5F55534552"), err);
+        if (flag) {
+            Log.e("test", "用户验证成功：");
+        } else {
+            Log.e("test", "用户验证失败，错误码：");
+            //Util.play(3, 0);
+            return ;
+        }
+        String cmd="80228001A90C7EE9CFB553DCBEC28994B728507EA1502CE2B345BA28817C02AC1E6D454779474E2A731A47ACE40C4FB04059E511F5AE293B183311560EE7C63527DADD70763EFB8B1C52DE1ACD995FB96863BB8ABC0A9CA338F744A01E2E4589A214E80B0BBDC5496ABE09BE980114EF2AAD90C3B7623B4D5B7F8682B2390DAF00487C5B75D3881894B07872BEE659DD43B537AB532A03D2F3DAB6C49157FF411316CBE17574A8326F96A39BA34C0000";
+        String rapdu= psam.excute(1,cmd,err8002);
+        Log.e("test", "rapdu="+rapdu);
+        System.out.println("rapdu="+rapdu);
 //        mylog=new MyLog(appContext,10000,1);
 //        mylog.Write("程序已启动！*****************************");
 //
 //        mylog.Write("初始化完成");
 
 
-        String cmd2002str="700000948000000005F5E1132002EB900938486FFAB01E27381A31AF8C9E37C0F10FED71562D8FD6059230565FDF4124334AB314638A2B57042A01B12F4B21AAC837A31AF76002E868DBB787E93853C48F8E2F494CA499CFE63310453448B21661B7410B3A4890E934B83E70E84EF28A83088BE7DB00CD6F51221EBB374D37514FD5835D43DF7DD6EF9156AE5CFE01830F1FCF74A4BE291045AFA9DFAE27DE2A5537";
-        BaseCmd baseCmd = CmdSelector.makeCmd(cmd2002str);
-        String skey="0F9A4806C75B891FF5D0253D212D2822";
-        try {
-            Cmd2002 cmd2002=new Cmd2002(baseCmd,skey);
-            String cmdjason=new String(Tools.HexString2Bytes(cmd2002.getData().substring(8)), "utf-8");
-
-            Log.e("kcrx","cmdjason="+cmdjason);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+//        String cmd2002str = "700000948000000005F5E1132002EB900938486FFAB01E27381A31AF8C9E37C0F10FED71562D8FD6059230565FDF4124334AB314638A2B57042A01B12F4B21AAC837A31AF76002E868DBB787E93853C48F8E2F494CA499CFE63310453448B21661B7410B3A4890E934B83E70E84EF28A83088BE7DB00CD6F51221EBB374D37514FD5835D43DF7DD6EF9156AE5CFE01830F1FCF74A4BE291045AFA9DFAE27DE2A5537";
+//        BaseCmd baseCmd = CmdSelector.makeCmd(cmd2002str);
+//        String skey = "0F9A4806C75B891FF5D0253D212D2822";
+//        try {
+//            Cmd2002 cmd2002 = new Cmd2002(baseCmd, skey);
+//            String cmdjason = new String(Tools.HexString2Bytes(cmd2002.getData().substring(8)), "utf-8");
+//
+//            Log.e("kcrx", "cmdjason=" + cmdjason);
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//        }
 
 
 //        String msg = null;
@@ -251,45 +283,67 @@ public class ExampleInstrumentedTest {
 //            Log.e( "test","getAtr命令失败");
 //        }
 
-       //
+        //
     }
+
     private static String intToHex(int n) {
         StringBuffer s = new StringBuffer();
         String a;
-        char []b = {'0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'};
-        while(n != 0){
-            s = s.append(b[n%16]);
-            n = n/16;
+        char[] b = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
+        while (n != 0) {
+            s = s.append(b[n % 16]);
+            n = n / 16;
         }
         a = s.reverse().toString();
         return a;
     }
+
     @Test
     public void testDes() throws IllegalAccessException {
         Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
 
-        TagEpcData tagEpcData= EpcReader.readEpc("3B9CD92A114E00AF09BA934D");
+        TagEpcData tagEpcData = EpcReader.readEpc("3B9CD92A114E00AF09BA934D");
 
-        Class cls=tagEpcData.getClass();
-        Field[] fields=cls.getDeclaredFields();
-        for(Field f:fields)
-        {
+        Class cls = tagEpcData.getClass();
+        Field[] fields = cls.getDeclaredFields();
+        for (Field f : fields) {
             f.setAccessible(true);
-            Log.e( "test","属性名:" + f.getName() + " 属性值:" +f.get(tagEpcData));
+            Log.e("test", "属性名:" + f.getName() + " 属性值:" + f.get(tagEpcData));
         }
     }
+
     @Test
-    public void mapperTest()
-    {
+    public void mapperTest() {
         // Context of the app under test.
         Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
 
-        UserMapper userMapper=new UserMapper(appContext);
+        UserMapper userMapper = new UserMapper(appContext);
 
 
-        assertTrue( userMapper.checkUser("0000000011"));
+        assertTrue(userMapper.checkUser("0000000011"));
     }
 
+    @Test
+    public void epc7Test() {
+        String epcstr = "4A825368714E209900B62541";
+        TagEpcData ted= EpcReader.readEpc(epcstr);
+
+        Log.e("test","tagid="+ted.getTagid());
+        Log.e("test","versionid="+ted.getVersionid());
+        Log.e("test","pervalueid="+ted.getPervalueid());
+        Log.e("test","amount="+ted.getAmount());
+        Log.e("test","randomstr="+ted.getRandom());
+        Log.e("test","operatecount="+ted.getOperatecount());
+        Log.e("test","checkcodestr="+ted.getCheckcode());
+
+        //00开锁下电40开锁上电01关锁下电41关锁上电
+        Log.e("test","lockstuts="+ted.getLockstuts());
+        Log.e("test","lockeEx="+ted.getLockeEx());
+        Log.e("test","epcEx="+ted.getEpcEx());
+        Log.e("test","hasElec="+ted.getHasElec());
+        Log.e("test","jobstuts="+ted.getJobstuts());
+        Log.e("test","tagid="+ted.getTagid());
+    }
 
 
 }

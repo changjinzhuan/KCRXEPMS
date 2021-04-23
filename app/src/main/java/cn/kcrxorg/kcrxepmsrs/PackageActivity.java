@@ -23,8 +23,10 @@ import java.util.Date;
 import java.util.List;
 
 import cn.kcrxorg.kcrxepmsrs.businessmodule.cmdinfo.PackageCMD;
+import cn.kcrxorg.kcrxepmsrs.businessmodule.cmdinfo.ViewCmdInfo;
 import cn.kcrxorg.kcrxepmsrs.businessmodule.cmdinfo.busiInfo;
 import cn.kcrxorg.kcrxepmsrs.businessmodule.cmdinfo.packInfo;
+import cn.kcrxorg.kcrxepmsrs.businessmodule.cmdinfo.paymentSack;
 import cn.kcrxorg.kcrxepmsrs.businessmodule.datainfo.PackageData;
 import cn.kcrxorg.kcrxepmsrs.businessmodule.datainfo.packinfo;
 import cn.kcrxorg.kcrxepmsrs.mbutil.DecimalTool;
@@ -156,6 +158,19 @@ public class PackageActivity extends BisnessBaseActivity {
         sp_vercharInfo.setFocusable(true);
         sp_vercharInfo.setFocusableInTouchMode(true);
 
+        //初始化查看任务列表
+        viewCmdInfoList=new ArrayList<ViewCmdInfo>();
+        for(packInfo stockPackInfo:packageCMD.getPackinfoList())
+        {
+       //     tagidlist.add(stockPackInfo.getSackNo());
+            ViewCmdInfo viewCmdInfo=new ViewCmdInfo();
+            viewCmdInfo.setSackNo(stockPackInfo.getSackNo());
+            viewCmdInfo.setPaperTypeName("无");
+            viewCmdInfo.setVoucherTypeName(stockPackInfo.getVoucherTypeName());
+            viewCmdInfo.setVal(stockPackInfo.getVal());
+            viewCmdInfoList.add(viewCmdInfo);
+        }
+
         mHandler = new Handler() {
             @Override
             public void handleMessage(Message msg) {
@@ -180,7 +195,7 @@ public class PackageActivity extends BisnessBaseActivity {
                                 mylog.Write(cardnum+"不在任务列表不可补登");
                                 break;
                             }
-                            if(!tagEpcData.getLockstuts().equals("Lock")&&tagEpcData.getHasElec()==true)//未关锁不可以补登
+                            if(!tagEpcData.getLockstuts().equals("Lock")||tagEpcData.getHasElec()==true)//未关锁不可以补登
                             {
                                 Util.playErr();
                                 addRsinfo(cardnum+"未关锁不可补登，锁状态："+tagEpcData.getLockstuts(),false);
@@ -188,11 +203,20 @@ public class PackageActivity extends BisnessBaseActivity {
                                 break;
                             }
 
-
+                            if(!checkDataList(cardnum))//这里需要补登判断是否已经在任务列表
+                            {
+                                Util.playErr();
+                                addRsinfo(cardnum+"已登记，不可补登",false);
+                                mylog.Write(cardnum+"已登记，不可补登");
+                                break;
+                            }
                             //减掉本币种金额
                             BigDecimal cmdSackMoney=thisbusiInfo.getSackMoney().subtract(new BigDecimal(kuncount*1000*val));
                             setBusiInfoSackMoney(thisbusiInfo,cmdSackMoney);
                          //   packInfo thispackInfo = getpackinfofromcardnum(cardnum);
+
+                            setGoodViewCmdInfo(tagEpcData.getTagid()+"");//设置任务列表
+
                             packinfo packinfo=new packinfo();
                             packinfo.setSackNo(cardnum);
                             packinfo.setVal(thisbusiInfo.getVal());
@@ -247,6 +271,8 @@ public class PackageActivity extends BisnessBaseActivity {
                                 BigDecimal cmdSackMoney=thisbusiInfo.getSackMoney().subtract(new BigDecimal(kuncount*1000*val));
                                 setBusiInfoSackMoney(thisbusiInfo,cmdSackMoney);
                            //     packInfo thispackInfo = getpackinfofromcardnum(cardnum);
+                                setGoodViewCmdInfo(cardnum+"");//设置任务列表
+
                                 packinfo packinfo=new packinfo();
                                 packinfo.setSackNo(cardnum);
                                 packinfo.setVal(thisbusiInfo.getVal());
@@ -280,6 +306,18 @@ public class PackageActivity extends BisnessBaseActivity {
         };
 
     }
+    public boolean checkDataList(String tagid)//查看补登的是否已经在数据列表中
+    {
+        for (packinfo p:packinfoList)
+        {
+            if(p.getSackNo().equals(tagid))
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
     public void initView()
     {
         //开始处理业务数据
@@ -294,12 +332,13 @@ public class PackageActivity extends BisnessBaseActivity {
         packageData.setError("");
         packinfoList=new ArrayList<packinfo>();
 
-        tv_header.setText("封装");
+        tv_header.setCenterString("封装");
 
         tv_footer.setText("请按【关锁】进行封装，或按【取消】结束任务");
-        line_kun.removeAllViews();//清除捆数显示，准备显示券别
+     //   line_kun.removeAllViews();//清除捆数显示，准备显示券别
         line_businfo.removeAllViews();
     }
+
     public void operateLockGetrs(final boolean lock)
     {
 

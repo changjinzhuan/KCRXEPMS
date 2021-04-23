@@ -1,7 +1,9 @@
 package cn.kcrxorg.kcrxepmsrs.data;
 
 import android.content.Context;
+import android.util.Log;
 
+import cn.kcrxorg.kcrxepmsrs.businessmodule.cmdinfo.User;
 import cn.kcrxorg.kcrxepmsrs.businessmodule.mapper.UserMapper;
 import cn.kcrxorg.kcrxepmsrs.data.model.LoggedInUser;
 
@@ -18,6 +20,11 @@ public class LoginDataSource {
         try {
         // TODO: handle loggedInUser authentication
             userMapper=new UserMapper(context);
+
+            for(User user:userMapper.getUsers())
+            {
+                Log.e("kcrxtest","usercid="+user.getCid());
+            }
             if(userMapper.checkUser(username)||userMapper.checkUser(password))
             {
                 LoggedInUser loggedInUser=new LoggedInUser("id",username+":"+password);

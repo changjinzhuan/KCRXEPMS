@@ -17,10 +17,13 @@ import java.util.Date;
 import java.util.List;
 
 import cn.kcrxorg.kcrxepmsrs.businessmodule.cmdinfo.DailyCheckCMD;
+import cn.kcrxorg.kcrxepmsrs.businessmodule.cmdinfo.ViewCmdInfo;
 import cn.kcrxorg.kcrxepmsrs.businessmodule.cmdinfo.dailyCheckStock;
+import cn.kcrxorg.kcrxepmsrs.businessmodule.cmdinfo.stock;
 import cn.kcrxorg.kcrxepmsrs.businessmodule.datainfo.DailyCheckData;
 import cn.kcrxorg.kcrxepmsrs.businessmodule.datainfo.DailyCheckPackInfo;
 import cn.kcrxorg.kcrxepmsrs.mbutil.DecimalTool;
+import cn.kcrxorg.kcrxepmsrs.mbutil.TXTReader;
 import cn.kcrxorg.kcrxepmsrs.mbutil.TXTWriter;
 import cn.kcrxorg.kcrxepmsrs.pasmutil.cn.kcrx.bean.TagEpcData;
 import cn.kcrxorg.kcrxepmsrs.pasmutil.rfidtool.EpcReader;
@@ -43,8 +46,9 @@ public class DailyCheckActivity extends BisnessBaseActivity {
         super.onCreate(savedInstanceState);
         initView();
         allcarddata=new ArrayList<>();
-        String cmddata=getIntent().getStringExtra("cmddata");
+        TXTReader tr = new TXTReader();
         businessid=getIntent().getStringExtra("businessid");
+        String cmddata = tr.getCmdById(DailyCheckActivity.this, businessid);
 
         dailyCheckCMD= JSONObject.parseObject(cmddata, DailyCheckCMD.class);
         dailyCheckData=new DailyCheckData();
@@ -61,12 +65,25 @@ public class DailyCheckActivity extends BisnessBaseActivity {
         saninfo =new TextView(this);
 
         String  cmdinfo="任务信息:\r\n";
-        cmdinfo+="待交接: "+dailyCheckCMD.getStockList().length+"袋";
+        cmdinfo+="待核对: "+dailyCheckCMD.getStockList().length+"袋";
         tv_cmdinfo.setText(cmdinfo);
         tv_cmdinfo.setTextSize(30);
         tv_cmdinfo.setBackground(getResources().getDrawable(R.drawable.tv_border));
         tv_cmdinfo.setLayoutParams(params);
         scro_businfo.addView(tv_cmdinfo);
+
+        //初始化查看任务列表
+        viewCmdInfoList=new ArrayList<ViewCmdInfo>();
+        for(dailyCheckStock stockPackInfo:dailyCheckCMD.getStockList())
+        {
+         //   tagidlist.add(stockPackInfo.getSackNo());
+            ViewCmdInfo viewCmdInfo=new ViewCmdInfo();
+            viewCmdInfo.setSackNo(stockPackInfo.getSackNo());
+            viewCmdInfo.setPaperTypeName(stockPackInfo.getPaperTypeName());
+            viewCmdInfo.setVoucherTypeName(stockPackInfo.getVoucherTypeName());
+            viewCmdInfo.setVal(stockPackInfo.getVal());
+            viewCmdInfoList.add(viewCmdInfo);
+        }
 
         String saninfostr="已核对:  0袋";
 
@@ -115,6 +132,8 @@ public class DailyCheckActivity extends BisnessBaseActivity {
                             Util.playOk();
                             saninfo.setText("已核对"+isgood+"袋");
 
+                            setGoodViewCmdInfo(tagEpcData.getTagid()+"");//设置任务列表
+
                             DailyCheckPackInfo dailyCheckPackInfo = new DailyCheckPackInfo();
                             dailyCheckPackInfo.setSackNo(tagEpcData.getTagid()+"");
                             dailyCheckPackInfo.setVal(thisdailyCheckStock.getVal());
@@ -158,7 +177,7 @@ public class DailyCheckActivity extends BisnessBaseActivity {
     }
 
     private void initView() {
-        tv_header.setText("电子签封核对");
+        tv_header.setCenterString("电子签封核对");
         tv_operinfo.setText("请按【扫描】进行核对扫描或按【取消】结束任务");
         tv_footer.setText("请按【扫描】进行核对扫描或按【取消】结束任务");
         line_kun.setVisibility(View.GONE);

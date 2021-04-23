@@ -8,8 +8,8 @@ android {
         applicationId "cn.kcrxorg.kcrxepmsrs"
         minSdkVersion 24
         targetSdkVersion 28
-        versionCode 1
-        versionName "1.0"
+        versionCode 10
+        versionName "3.34"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -20,7 +20,11 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
-    repositories {
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+        repositories {
         maven { url "https://jitpack.io" }
     }
     android.applicationVariants.all {
@@ -28,7 +32,7 @@ android {
             variant.outputs.all {
                 //在这里修改apk文件名
                 // outputFileName = "NewPadScaner-${variant.name}-v${variant.versionName}.apk"
-                outputFileName = "KCRXEPMSRS.apk"
+                outputFileName = "KCRXEPMSRS-v${variant.versionName}.apk"
             }
     }
 
@@ -50,7 +54,7 @@ dependencies {
 //    implementation files('libs/uhf_r_v1.0.jar')
     implementation 'com.alibaba:fastjson:1.1.54.android'
     implementation 'com.github.vilyever:AndroidSocketClient:2.0.1'
-    implementation 'org.jetbrains:annotations-java5:15.0'
+//    implementation 'org.jetbrains:annotations-java5:15.0'
     implementation files('libs/commons-net-3.2.jar')
     implementation files('libs/ftpserver-core-1.0.6.jar')
     implementation files('libs/log4j-1.2.14.jar')
@@ -59,4 +63,33 @@ dependencies {
     implementation files('libs/mina-core-2.0.4.jar')
     implementation files('libs/nanohttpd-2.2.0.jar')
     implementation 'com.github.warkiz.widget:indicatorseekbar:1.1.2'
+
+    //XUI androidx项目
+    implementation 'com.github.xuexiangjys:XUI:1.1.6'
+ //   implementation 'androidx.appcompat:appcompat:1.1.0'
+    implementation 'androidx.recyclerview:recyclerview:1.1.0'
+ //   implementation 'com.google.android.material:material:1.1.0'
+    implementation 'com.github.bumptech.glide:glide:4.11.0'
+
+    // XPage
+    implementation 'com.github.xuexiangjys.XPage:xpage-lib:3.1.1'
+    annotationProcessor 'com.github.xuexiangjys.XPage:xpage-compiler:3.1.1'
+    // ButterKnife的sdk
+    implementation 'com.jakewharton:butterknife:10.1.0'
+    annotationProcessor 'com.jakewharton:butterknife-compiler:10.1.0'
+
+    //腾讯的键值对存储mmkv
+    implementation 'com.tencent:mmkv:1.0.22'
+
+    //XUpdate androidx版本
+    implementation 'com.github.xuexiangjys:XUpdate:2.0.6'
+    implementation 'com.zhy:okhttputils:2.6.2'
+    implementation 'com.google.code.gson:gson:2.8.6'
+    implementation("com.squareup.okhttp3:okhttp:4.9.0")
+
+    //工具类
+    implementation 'com.github.xuexiangjys.XUtil:xutil-core:2.0.0'
+    implementation 'com.github.xuexiangjys.XUtil:xutil-sub:2.0.0'
+    implementation 'com.google.android:flexbox:0.3.1'
+
 }

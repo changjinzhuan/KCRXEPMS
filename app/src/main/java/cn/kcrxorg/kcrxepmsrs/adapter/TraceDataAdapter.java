@@ -6,6 +6,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import java.util.List;
@@ -58,11 +59,13 @@ public class TraceDataAdapter extends BaseAdapter {
 
             if(userTraceDataList!=null&&userTraceDataList.size()!=0)
             {
-                Log.e("kcrx",userTraceDataList.get(position).getOpdatetime()+"操作时间已变化");
+              //  Log.e("kcrx",userTraceDataList.get(position).getOpdatetime()+"操作时间已变化");
                 holder.tv_cmdid.setText(userTraceDataList.get(position).getCommandid());
                 holder.tv_operinfoone.setText(userTraceDataList.get(position).getOperator1());
                 holder.tv_operinfotwo.setText(userTraceDataList.get(position).getOperator2());
                 holder.tv_datatime.setText(userTraceDataList.get(position).getOpdatetime());
+
+
             }
         }catch (Exception e)
         {
@@ -76,5 +79,6 @@ public class TraceDataAdapter extends BaseAdapter {
         TextView tv_operinfoone;
         TextView tv_operinfotwo;
         TextView tv_datatime;
+
     }
 }

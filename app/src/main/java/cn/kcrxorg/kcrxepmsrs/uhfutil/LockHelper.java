@@ -492,7 +492,7 @@ public  class LockHelper {
         //启动天线读取
         //启动天线读取
         mUhfrManager.setCancleInventoryFilter();
-        mUhfrManager.setPower(10,5);
+        mUhfrManager.setPower(12,5);
         List<Reader.TAGINFO> list1;
         list1 = mUhfrManager.tagInventoryByTimer((short) 100);
         //过滤非法及未上电标签
@@ -991,7 +991,7 @@ public  class LockHelper {
             sendLockMes(mHandler, "未读取到上电的标签",LOCK_WHAT);
             return ;
         }
-        sendLockMes(mHandler, "扫描已停止！",LOCK_LOG_WHAT);
+        sendLockMes(mHandler, "扫描已停止！读取到已上电签封EPC:"+hasElecEpc,LOCK_LOG_WHAT);
         sendLockMes(mHandler, "2、开始操作PSAM获命令...",LOCK_LOG_WHAT);
 
         //开始PSAM操作
@@ -1031,6 +1031,7 @@ public  class LockHelper {
         String cmd = "";
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         String datetime=sdf.format(new Date());
+        Log.e("test","关锁时间为:"+datetime);
         if (lock) {
             result = psam.genCloseWriteElsCmd(1,
                     Tools.HexString2Bytes(hasElecEpc),
@@ -1064,8 +1065,8 @@ public  class LockHelper {
         }
         sendLockMes(mHandler, "3、开始写入指令...",LOCK_LOG_WHAT);
 
-        mUhfrManager.setPower(5, 10);
-        sendLockMes(mHandler, "设置读取功率：" + 5 + " 写入功率：" + 10,LOCK_LOG_WHAT);
+        mUhfrManager.setPower(12, 20);
+        sendLockMes(mHandler, "设置读取功率：" + 12 + " 写入功率：" + 20,LOCK_LOG_WHAT);
         int mbank = 3;//user区
         int startaddr = 76;
         int datalen = "6618B05CF3E99DEC4EE0747D83890C40FA01075AE5976A32DD51".length() / 2;
@@ -1119,7 +1120,6 @@ public  class LockHelper {
                         String lockstatus = "";
                         if (lock) {
                             lockstatus = "Lock";
-
                         } else {
                             lockstatus = "unLock";
                         }

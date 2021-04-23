@@ -11,6 +11,7 @@ import android.widget.Toast;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
+import com.xuexiang.xpage.annotation.Page;
 
 import java.io.UnsupportedEncodingException;
 import java.text.SimpleDateFormat;
@@ -19,12 +20,16 @@ import java.util.Date;
 import java.util.List;
 
 import cn.kcrxorg.kcrxepmsrs.businessmodule.cmdinfo.AllotUnPackCMD;
+import cn.kcrxorg.kcrxepmsrs.businessmodule.cmdinfo.ViewCmdInfo;
 import cn.kcrxorg.kcrxepmsrs.businessmodule.cmdinfo.stock;
 import cn.kcrxorg.kcrxepmsrs.businessmodule.cmdinfo.team;
 import cn.kcrxorg.kcrxepmsrs.businessmodule.datainfo.AllotUnPackData;
 import cn.kcrxorg.kcrxepmsrs.businessmodule.datainfo.elePackInfo;
 import cn.kcrxorg.kcrxepmsrs.mbutil.DecimalTool;
+import cn.kcrxorg.kcrxepmsrs.mbutil.TXTReader;
 import cn.kcrxorg.kcrxepmsrs.mbutil.TXTWriter;
+import cn.kcrxorg.kcrxepmsrs.pasmutil.cn.kcrx.bean.TagEpcData;
+import cn.kcrxorg.kcrxepmsrs.pasmutil.rfidtool.EpcReader;
 
 public class AllotUnPackActivity extends BisnessBaseActivity {
     TextView tv_cmdinfo;
@@ -47,9 +52,11 @@ public class AllotUnPackActivity extends BisnessBaseActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         initView();
+        allcarddata=new ArrayList<>();
         //开始处理业务数据
-        String cmddata=getIntent().getStringExtra("cmddata");
+        TXTReader tr = new TXTReader();
         businessid=getIntent().getStringExtra("businessid");
+        String cmddata = tr.getCmdById(AllotUnPackActivity.this, businessid);
         operator=getIntent().getStringExtra("operator");
         auditor=getIntent().getStringExtra("auditor");
         allotUnPackCMD= JSONObject.parseObject(cmddata, AllotUnPackCMD.class);
@@ -63,10 +70,20 @@ public class AllotUnPackActivity extends BisnessBaseActivity {
 
         tagidlist=new ArrayList<String>();//获取可执行锁列表
 
+        //初始化查看任务列表
+        viewCmdInfoList=new ArrayList<ViewCmdInfo>();
         for(stock stockPackInfo:allotUnPackCMD.getStockList())
         {
             tagidlist.add(stockPackInfo.getSackNo());
+            ViewCmdInfo viewCmdInfo=new ViewCmdInfo();
+            viewCmdInfo.setSackNo(stockPackInfo.getSackNo());
+            viewCmdInfo.setPaperTypeName(stockPackInfo.getPaperTypeName());
+            viewCmdInfo.setVoucherTypeName(stockPackInfo.getVoucherTypeName());
+            viewCmdInfo.setVal(stockPackInfo.getVal());
+            viewCmdInfoList.add(viewCmdInfo);
         }
+
+
 
 
         line_businfo.setOrientation(LinearLayout.VERTICAL);//设置布局方向
@@ -79,13 +96,14 @@ public class AllotUnPackActivity extends BisnessBaseActivity {
 
         cmdinfo+="待拆封分配: "+waitunpack+"袋";
         tv_cmdinfo.setText(cmdinfo);
-        tv_cmdinfo.setTextSize(40);
+        tv_cmdinfo.setTextSize(36);
         tv_cmdinfo.setBackground(getResources().getDrawable(R.drawable.tv_border));
         tv_cmdinfo.setLayoutParams(params);
-        sp_stackInfo.addView(tv_cmdinfo);
+
+        scro_businfo.addView(tv_cmdinfo);
 
         saninfo.setText("已拆封: 0袋");
-        saninfo.setTextSize(40);
+        saninfo.setTextSize(36);
         saninfo.setLayoutParams(params);
         //  saninfo.setHeight(LinearLayout.LayoutParams.MATCH_PARENT);
 
@@ -120,7 +138,70 @@ public class AllotUnPackActivity extends BisnessBaseActivity {
             @Override
             public void handleMessage(Message msg) {
                 switch (msg.what) {
-                    case 1://扫描到包号,这里应该是补登后续开发
+                    case 1://扫描到包号,这里应该是补登
+                        String tagmessage=msg.getData().getString("tagmessage");
+                        mylog.Write("拆封分配补登读取到EPC："+tagmessage);
+                        if(!checkrepeat(tagmessage))//重复过滤
+                        {
+                            break;
+                        }
+                        allcarddata.add(tagmessage);
+                        TagEpcData tagEpcData= EpcReader.readEpc(tagmessage);
+                        if(tagEpcData!=null&&tagEpcData.getTagid()>0)//如果可以读取未报错
+                        {
+                            String cardnum=tagEpcData.getTagid()+"";
+                            if(!tagidlist.contains(cardnum))
+                            {
+                                Util.playErr();
+                                addRsinfo(cardnum+"不在任务列表不可补登",false);
+                                mylog.Write(cardnum+"不在任务列表不可补登");
+                                break;
+                            }
+                            if(!tagEpcData.getLockstuts().equals("unLock")&&tagEpcData.getHasElec()==true)//关锁不可以补登
+                            {
+                                Util.playErr();
+                                addRsinfo(cardnum+"关锁不可补登，锁状态："+tagEpcData.getLockstuts(),false);
+                                mylog.Write(cardnum+"关锁不可补登，锁状态："+tagEpcData.getLockstuts());
+                                break;
+                            }
+                            if(!checkDataList(cardnum))
+                            {
+                                Util.playErr();
+                                addRsinfo(cardnum+"已登记，不可补登",false);
+                                mylog.Write(cardnum+"已登记，不可补登");
+                                break;
+                            }
+                            team thisteam=new team();
+                            thisteam.setTeamId(sp_stackInfo.getSelectedItem().toString().split(":")[0]);
+                            thisteam.setTeamName(sp_stackInfo.getSelectedItem().toString().split(":")[1]);
+                            isgood++;
+                            saninfo.setText("已拆封分配: "+isgood+"袋");
+                            addRsinfo("签封" + cardnum + "拆封补登成功!分配给小组"+thisteam.getTeamName(),true);
+
+                            stock thisstock = getStock(cardnum);
+
+                            setGoodViewCmdInfo(tagEpcData.getTagid()+"");//设置任务列表
+
+                            elePackInfo elePackInfo = new elePackInfo();
+                            elePackInfo.setSackNo(cardnum);
+                            elePackInfo.setVoucherTypeID(thisstock.getVoucherTypeID());
+                            elePackInfo.setVoucherTypeName(thisstock.getVoucherTypeName());
+                            elePackInfo.setPaperTypeID(thisstock.getPaperTypeID());
+                            elePackInfo.setPaperTypeName(thisstock.getPaperTypeName());
+                            elePackInfo.setEditionCode("");
+                            elePackInfo.setEditionName("");
+                            elePackInfo.setSeriesCode("");
+                            elePackInfo.setSeriesName("");
+                            elePackInfo.setVal(thisstock.getVal());
+                            elePackInfo.setBundles(thisstock.getBundles());
+                            elePackInfo.setSackMoney(thisstock.getSackMoney());
+                            elePackInfo.setTeamId(thisteam.getTeamId());
+                            elePackInfo.setTeamName(thisteam.getTeamName());
+                            elePackInfo.setScanUser("");
+                            elePackInfo.setOprDT(new SimpleDateFormat("yyyyMMddHHmmss").format(new Date()));
+                            elePackInfo.setHavaBoxInfo("0");
+                            elePackInfoList.add(elePackInfo);
+                        }
                         break;
                     case INFO_MES:
                         mylog.Write(msg.getData().getString("message").toString());
@@ -183,6 +264,17 @@ public class AllotUnPackActivity extends BisnessBaseActivity {
         };
     }
 
+    private boolean checkDataList(String cardnum) {
+         for(elePackInfo elePackInfo:elePackInfoList)
+         {
+             if(elePackInfo.getSackNo().equals(cardnum))
+             {
+                 return false;
+             }
+         }
+         return  true;
+    }
+
     private stock getStock(String cardnum) {
         for (int i = 0; i < allotUnPackCMD.getStockList().length; i++)
         {
@@ -211,7 +303,7 @@ public class AllotUnPackActivity extends BisnessBaseActivity {
     }
     public void initView()
     {
-        tv_header.setText("拆封分配");
+        tv_header.setCenterString("拆封分配");
         tv_operinfo.setText("请按【开锁】进行拆封分配，或按【取消】结束任务");
         tv_footer.setText("请按【开锁】进行拆封分配，或按【取消】结束任务");
     }

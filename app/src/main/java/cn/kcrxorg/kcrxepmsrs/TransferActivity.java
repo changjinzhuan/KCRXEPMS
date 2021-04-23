@@ -18,10 +18,14 @@ import java.util.Date;
 import java.util.List;
 
 import cn.kcrxorg.kcrxepmsrs.businessmodule.cmdinfo.TransferCMD;
+import cn.kcrxorg.kcrxepmsrs.businessmodule.cmdinfo.ViewCmdInfo;
+import cn.kcrxorg.kcrxepmsrs.businessmodule.cmdinfo.outDetail;
+import cn.kcrxorg.kcrxepmsrs.businessmodule.cmdinfo.paymentSack;
 import cn.kcrxorg.kcrxepmsrs.businessmodule.cmdinfo.scanSort;
 import cn.kcrxorg.kcrxepmsrs.businessmodule.datainfo.TransferTransferData;
 import cn.kcrxorg.kcrxepmsrs.businessmodule.datainfo.transferPackInfo;
 import cn.kcrxorg.kcrxepmsrs.mbutil.DecimalTool;
+import cn.kcrxorg.kcrxepmsrs.mbutil.TXTReader;
 import cn.kcrxorg.kcrxepmsrs.mbutil.TXTWriter;
 import cn.kcrxorg.kcrxepmsrs.pasmutil.cn.kcrx.bean.TagEpcData;
 import cn.kcrxorg.kcrxepmsrs.pasmutil.rfidtool.EpcReader;
@@ -44,8 +48,9 @@ public class TransferActivity extends BisnessBaseActivity {
         super.onCreate(savedInstanceState);
         initView();
         allcarddata=new ArrayList<>();
-        String cmddata=getIntent().getStringExtra("cmddata");
+        TXTReader tr = new TXTReader();
         businessid=getIntent().getStringExtra("businessid");
+        String cmddata = tr.getCmdById(TransferActivity.this, businessid);
 
         transferCMD= JSONObject.parseObject(cmddata, TransferCMD.class);
         transferTransferData=new TransferTransferData();
@@ -79,7 +84,16 @@ public class TransferActivity extends BisnessBaseActivity {
         saninfo.setBackground(getResources().getDrawable(R.drawable.tv_border));
         line_businfo.addView(saninfo);
 
-
+        viewCmdInfoList=new ArrayList<ViewCmdInfo>();
+        for(scanSort stockPackInfo:transferCMD.getScanSortList())
+        {
+            ViewCmdInfo viewCmdInfo=new ViewCmdInfo();
+            viewCmdInfo.setSackNo(stockPackInfo.getSackNo());
+            viewCmdInfo.setPaperTypeName(stockPackInfo.getPaperTypeName());
+            viewCmdInfo.setVoucherTypeName(stockPackInfo.getVoucherTypeName());
+            viewCmdInfo.setVal(stockPackInfo.getVal());
+            viewCmdInfoList.add(viewCmdInfo);
+        }
 
 
         mHandler = new Handler() {
@@ -119,6 +133,7 @@ public class TransferActivity extends BisnessBaseActivity {
                             Util.playOk();
                             saninfo.setText("已交接"+isgood+"袋");
 
+                            setGoodViewCmdInfo(tagEpcData.getTagid()+"");//设置任务列表
 
                             transferPackInfo transferPackInfo = new transferPackInfo();
                             transferPackInfo.setSackNo(tagEpcData.getTagid()+"");
@@ -165,7 +180,7 @@ public class TransferActivity extends BisnessBaseActivity {
     }
 
     private void initView() {
-        tv_header.setText("电子签封交接");
+        tv_header.setCenterString("电子签封交接");
         tv_operinfo.setText("请按【扫描】进行交接扫描或按【取消】结束任务");
         tv_footer.setText("请按【扫描】进行交接扫描或按【取消】结束任务");
         line_kun.setVisibility(View.GONE);

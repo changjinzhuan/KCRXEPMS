@@ -584,7 +584,6 @@ public class PsamCmdUtil {
                // MyLogger.e(TAG,"收到PSAM返回："+Tools.Bytes2HexString(pwd,pwd.length));
                 return Tools.Bytes2HexString(pwd,pwd.length)+"9000";
             }
-
             return resultStr ;
         }
         return null;
@@ -623,7 +622,7 @@ public class PsamCmdUtil {
             Date date = simpleDateFormat.parse(dateStr);
             year = date.getYear()%100 ;
             month = (date.getMonth() + 1) ;
-            day = date.getDay() ;
+            day = date.getDate() ;
             hour = date.getHours() ;
             minute = date.getMinutes() ;
             second = date.getSeconds() ;

@@ -102,14 +102,14 @@ public class SackTraceActivity extends BisnessBaseActivity{
 
     public void initView()
     {
-        tv_header.setText("签封追溯");
+        tv_header.setCenterString("签封追溯");
         tv_operinfo.setText("请按【扫描】进行追溯或按【取消】退出");
         tv_footer.setText("请按【扫描】进行追溯或按【取消】退出");
         line_kun.removeAllViews();//清除捆数栏，准备添加库间选择列表
     }
 
     public void readCard() {
-        mylog.Write("开始追溯扫描款包,读取功率："+10);
+        mylog.Write("开始追溯扫描款包,读取功率："+12);
         String alldata= lockHelper.RFID_Trace();
         if(alldata.contains("_ERR"))
         {

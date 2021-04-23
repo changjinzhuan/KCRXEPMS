@@ -90,9 +90,9 @@ public class NetChecker extends Thread {
     public boolean isWirePluggedIn(){
         //String state= execCommand("cat /sys/class/net/wlan0/carrier");
         String state= execCommand("cat /sys/class/net/eth0/carrier");
-      //  String wifistate=execCommand("cat /sys/class/net/wlan0/carrier");
+        String wifistate=execCommand("cat /sys/class/net/wlan0/carrier");
       //  if(state.trim().equals("1")||wifistate.trim().equals("1")){  //有网线插入时返回1，拔出时返回0
-        if(state.trim().equals("1")){
+        if(state.trim().equals("1")||wifistate.trim().equals("1")){
             return true;
         }
         return false;

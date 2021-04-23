@@ -1,17 +1,25 @@
 package cn.kcrxorg.kcrxepmsrs;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import cn.kcrxorg.kcrxepmsrs.businessmodule.cmdinfo.ViewCmdInfo;
 import cn.kcrxorg.kcrxepmsrs.mbutil.MyLog;
+import cn.kcrxorg.kcrxepmsrs.mbutil.XToastUtils;
 import cn.kcrxorg.kcrxepmsrs.pasmutil.Config;
 import cn.kcrxorg.kcrxepmsrs.pasmutil.PsamCmdUtil;
 import cn.kcrxorg.kcrxepmsrs.uhfutil.LockHelper;
 import cn.kcrxorg.kcrxepmsrs.ui.login.LoginActivity;
+import cn.kcrxorg.kcrxepmsrs.views.CmdInfoListView;
 
+import android.app.ProgressDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.graphics.drawable.Drawable;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.speech.tts.TextToSpeech;
@@ -31,13 +39,25 @@ import android.widget.Toast;
 import com.handheld.uhfr.UHFRManager;
 import com.uhf.api.cls.Reader;
 import com.warkiz.widget.IndicatorSeekBar;
+import com.xuexiang.xpage.base.XPageActivity;
+import com.xuexiang.xui.XUI;
+import com.xuexiang.xui.utils.WidgetUtils;
+import com.xuexiang.xui.widget.dialog.LoadingDialog;
+import com.xuexiang.xui.widget.dialog.bottomsheet.BottomSheet;
+import com.xuexiang.xui.widget.dialog.materialdialog.GravityEnum;
+import com.xuexiang.xui.widget.dialog.materialdialog.MaterialDialog;
+import com.xuexiang.xui.widget.progress.loading.RotateLoadingView;
+import com.xuexiang.xui.widget.textview.supertextview.SuperTextView;
+import com.xuexiang.xui.widget.toast.XToast;
 
+import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
+//public class BisnessBaseActivity extends AppCompatActivity {
 public class BisnessBaseActivity extends AppCompatActivity {
-
-    TextView tv_header;
+    SuperTextView tv_header;
     TextView tv_operinfo;
     TextView tv_footer;
     TextView tv_kuncount;
@@ -78,39 +98,80 @@ public class BisnessBaseActivity extends AppCompatActivity {
     private SharedPreferences mSharedPreferences;
     private SharedPreferences.Editor mEditor;
 
+    //查看任务列表
+    List<ViewCmdInfo> viewCmdInfoList;
+    ProgressDialog mypDialog;
+
     //加密设置
     public  boolean encrypt=true;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        XUI.initTheme(this);
         supportRequestWindowFeature(Window.FEATURE_NO_TITLE);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
-                WindowManager.LayoutParams.FLAG_FULLSCREEN);
+              WindowManager.LayoutParams.FLAG_FULLSCREEN);
         setContentView(R.layout.activity_bisness_base);
         //初始化配置
         mSharedPreferences = getSharedPreferences("UHF",MODE_PRIVATE);
 
         encrypt=mSharedPreferences.getBoolean("encrypt",true);
-       // showToast("目前加密模式是:"+encrypt);
+        //showToast("目前加密模式是:"+encrypt);
+
+
+
         tv_header=findViewById(R.id.tv_header);
         tv_header.setOnLongClickListener(new View.OnLongClickListener() {
             @Override
             public boolean onLongClick(View v) {
                 if(encrypt)
                 {
-                    encrypt=false;
-                    showToast("解除加密模式");
+                    showToast("当前为加密模式");
                 }else
                 {
-                    encrypt=true;
-                    showToast("进入加密模式");
+                    showToast("当前为解密模式");
                 }
-                mEditor=mSharedPreferences.edit();
-                mEditor.putBoolean("encrypt", encrypt);
-                mEditor.commit();
                 return true;
             }
         });
+        tv_header.setRightTvClickListener(new SuperTextView.OnRightTvClickListener() {
+            @Override
+            public void onClick(TextView textView) {
+                if(viewCmdInfoList==null)
+                {
+                    XToastUtils.error("当前任务不存在任务列表!");
+                    return;
+                }
+                String[] cmdstrs=new String[viewCmdInfoList.size()];
+                if(viewCmdInfoList.size()>0)
+                {
+//                    BottomSheet.BottomListSheetBuilder builder=new BottomSheet.BottomListSheetBuilder(BisnessBaseActivity.this);
+//                     for(int i=0;i<viewCmdInfoList.size();i++)
+//                    {
+//                        ViewCmdInfo v= viewCmdInfoList.get(i);
+//                        cmdstrs[i]=(v.getSackNo()+" "+v.getPaperTypeName()+" "+v.getVoucherTypeName());
+//                        Log.e("kcrx",v.getSackNo());
+//                        builder.addItem(cmdstrs[i]);
+//                    }
+//                    builder.setTitle("任务列表信息"+"总数:"+viewCmdInfoList.size());
+//                    builder.build().show();
+                    CmdInfoListView cmdInfoListView=new CmdInfoListView(BisnessBaseActivity.this,viewCmdInfoList);
+                    new MaterialDialog.Builder(BisnessBaseActivity.this)
+                            .titleGravity(GravityEnum.CENTER)
+                            .titleColorRes(R.color.xpage_default_actionbar_color)
+                            .customView(cmdInfoListView,false)
+                            .title("任务列表信息"+"总数:"+viewCmdInfoList.size())
+                            .positiveText("确定")
+                            .show();
+                }
+                else
+                {
+                    XToast.error(BisnessBaseActivity.this,"无任务列表信息");
+                }
+            }
+        });
+
+
         tv_operinfo=findViewById(R.id.tv_operinfo);
         tv_footer=findViewById(R.id.tv_footer);
         tv_kuncount=findViewById(R.id.tv_kuncout);
@@ -129,8 +190,6 @@ public class BisnessBaseActivity extends AppCompatActivity {
         //初始化日志
         mylog=new MyLog(this,10000,1);
         //mylog.Write(this.getClass()+"业务启动！*****************************");
-
-
 
         //注册按钮
         //注册按键广播
@@ -160,6 +219,8 @@ public class BisnessBaseActivity extends AppCompatActivity {
             }
         });
 
+
+
     }
 
     //key receiver
@@ -180,7 +241,8 @@ public class BisnessBaseActivity extends AppCompatActivity {
                 keyUpFalg = false;
                 startTime = System.currentTimeMillis() ;
                 if (keyCode == KeyEvent.KEYCODE_F3) {
-                    readCard();
+                    //readCard();
+                    new ReadTagTask().execute();
                 }
                 if(keyCode==KeyEvent.KEYCODE_F1)
                 {
@@ -273,7 +335,6 @@ public class BisnessBaseActivity extends AppCompatActivity {
         int readpower=mSharedPreferences.getInt("readPower",25);
         Log.e("kcrx","开始扫描款包,读取功率："+readpower);
         lockHelper.readCARD(mHandler,readpower,10);
-
     }
 
     //show tips
@@ -346,6 +407,10 @@ public class BisnessBaseActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        if(mLoadingDialog!=null)
+        {
+            mLoadingDialog.recycle();
+        }
         unregisterReceiver(keyReceiver);//
     }
     @Override
@@ -353,14 +418,110 @@ public class BisnessBaseActivity extends AppCompatActivity {
         switch (keyCode)
         {
             case KeyEvent.KEYCODE_DPAD_LEFT:
-                kuncount--;
-                mylog.Write("左键按下");
-                tv_kuncount.setText(kuncount+"");
+
+                AlertDialog builder = new AlertDialog.Builder(this)
+                        .setTitle("提示:")
+                        .setMessage("确定要更改款袋捆数？")
+                        .setPositiveButton("确定", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                kuncount--;
+                                if(kuncount<1)
+                                    kuncount=1;//至少1捆
+                                mylog.Write("左键按下，kuncount="+kuncount);
+                                tv_kuncount.setText(kuncount+"");
+                            }
+                        })
+                        .setNegativeButton("取消", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                dialog.dismiss();
+                            }
+                        })
+                        .show();
+
+                //修改 确定取消 按钮的字体大小
+                builder.getButton(AlertDialog.BUTTON_POSITIVE).setTextSize(24);
+                builder.getButton(DialogInterface.BUTTON_NEGATIVE).setTextSize(24);
+
+                try {
+                    //获取mAlert对象
+                    Field mAlert = AlertDialog.class.getDeclaredField("mAlert");
+                    mAlert.setAccessible(true);
+                    Object mAlertController = mAlert.get(builder);
+
+                    //获取mTitleView并设置大小颜色
+                    Field mTitle = mAlertController.getClass().getDeclaredField("mTitleView");
+                    mTitle.setAccessible(true);
+                    TextView mTitleView = (TextView) mTitle.get(mAlertController);
+                    mTitleView.setTextSize(24);
+                    mTitleView.setTextColor(getResources().getColor(R.color.DarkGreen));
+
+                    //获取mMessageView并设置大小颜色
+                    Field mMessage = mAlertController.getClass().getDeclaredField("mMessageView");
+                    mMessage.setAccessible(true);
+                    TextView mMessageView = (TextView) mMessage.get(mAlertController);
+                    mMessageView.setTextColor(getResources().getColor(R.color.Black));
+                    mMessageView.setTextSize(24);
+                } catch (IllegalAccessException e) {
+                    e.printStackTrace();
+
+                } catch (NoSuchFieldException e) {
+                    e.printStackTrace();
+                }
+
                 return true;
             case KeyEvent.KEYCODE_DPAD_RIGHT:
-                kuncount++;
-                mylog.Write("右键按下");
-                tv_kuncount.setText(kuncount+"");
+
+                AlertDialog builder1 = new AlertDialog.Builder(this)
+                        .setTitle("提示:")
+                        .setMessage("确定要更改款袋捆数？")
+                        .setPositiveButton("确定", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                kuncount++;
+                                mylog.Write("右键按下，kuncount="+kuncount);
+                                tv_kuncount.setText(kuncount+"");
+                            }
+                        })
+                        .setNegativeButton("取消", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                dialog.dismiss();
+                            }
+                        })
+                        .show();
+
+                //修改 确定取消 按钮的字体大小
+                builder1.getButton(AlertDialog.BUTTON_POSITIVE).setTextSize(24);
+                builder1.getButton(DialogInterface.BUTTON_NEGATIVE).setTextSize(24);
+
+                try {
+                    //获取mAlert对象
+                    Field mAlert = AlertDialog.class.getDeclaredField("mAlert");
+                    mAlert.setAccessible(true);
+                    Object mAlertController = mAlert.get(builder1);
+
+                    //获取mTitleView并设置大小颜色
+                    Field mTitle = mAlertController.getClass().getDeclaredField("mTitleView");
+                    mTitle.setAccessible(true);
+                    TextView mTitleView = (TextView) mTitle.get(mAlertController);
+                    mTitleView.setTextSize(24);
+                    mTitleView.setTextColor(getResources().getColor(R.color.DarkGreen));
+
+                    //获取mMessageView并设置大小颜色
+                    Field mMessage = mAlertController.getClass().getDeclaredField("mMessageView");
+                    mMessage.setAccessible(true);
+                    TextView mMessageView = (TextView) mMessage.get(mAlertController);
+                    mMessageView.setTextColor(getResources().getColor(R.color.Black));
+                    mMessageView.setTextSize(24);
+                } catch (IllegalAccessException e) {
+                    e.printStackTrace();
+
+                } catch (NoSuchFieldException e) {
+                    e.printStackTrace();
+                }
+
                 return true;
             case KeyEvent.KEYCODE_DPAD_UP:
             if(sp_stackInfo!=null)
@@ -378,4 +539,55 @@ public class BisnessBaseActivity extends AppCompatActivity {
 
         return super.onKeyDown(keyCode, event);
     }
+    LoadingDialog mLoadingDialog;
+    boolean isreading=false;
+    public class ReadTagTask extends AsyncTask<String, Integer, Boolean>
+    {
+       // ProgressDialog mypDialog;
+        @Override
+        protected void onPostExecute(Boolean aBoolean) {
+            super.onPostExecute(aBoolean);
+            mLoadingDialog.cancel();
+            isreading=false;
+         //   mypDialog.cancel();
+        }
+        @Override
+        protected Boolean doInBackground(String... strings) {
+            isreading=true;
+            readCard();
+            return true;
+        }
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+            if(isreading==true)
+            {
+                mLoadingDialog.updateMessage("正在扫描，请勿重复操作...");
+                return;
+            }
+              //扫描进度提示
+                mLoadingDialog = WidgetUtils.getLoadingDialog(BisnessBaseActivity.this)
+                        .setLoadingIcon(R.drawable.cblogo)
+                        .setLoadingSpeed(8);
+                mLoadingDialog.setCanceledOnTouchOutside(true);
+                mLoadingDialog.updateMessage("正在扫描中请稍后...");
+                mLoadingDialog.show();
+//            mypDialog = new ProgressDialog(BisnessBaseActivity.this);
+//            mypDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
+//            mypDialog.setMessage("正在读取请稍后...");
+//            mypDialog.setCanceledOnTouchOutside(false);
+//            mypDialog.show();
+        }
+    }
+   public void setGoodViewCmdInfo(String sackno)
+   {
+         for(ViewCmdInfo v:viewCmdInfoList)
+         {
+             if(v.getSackNo().equals(sackno))
+             {
+                 v.setDone(true);
+             }
+         }
+   }
+
 }

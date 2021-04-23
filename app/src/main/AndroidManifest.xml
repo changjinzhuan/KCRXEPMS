@@ -20,6 +20,7 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
+        android:name=".MyApp"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
@@ -46,6 +47,10 @@
         <activity android:name="cn.kcrxorg.kcrxepmsrs.DailyCheckActivity"/>
         <activity android:name="cn.kcrxorg.kcrxepmsrs.AllotUnPackActivity"/>
         <activity android:name="cn.kcrxorg.kcrxepmsrs.SackTraceActivity"/>
+        <activity android:name=".setting.NewSettingActivity"/>
+        <activity android:name=".EmptyEnterScanActivity"/>
+        <activity android:name=".EnterCheckActivity"/>
+        <activity android:name=".SuperScanActivty104"/>
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="cn.kcrxorg.kcrxepmsrs.fileprovider"

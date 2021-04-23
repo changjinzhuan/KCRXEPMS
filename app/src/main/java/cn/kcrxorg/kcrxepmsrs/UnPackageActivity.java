@@ -18,8 +18,11 @@ import java.util.Date;
 import java.util.List;
 
 import cn.kcrxorg.kcrxepmsrs.businessmodule.cmdinfo.UnPackageCMD;
+import cn.kcrxorg.kcrxepmsrs.businessmodule.cmdinfo.ViewCmdInfo;
+import cn.kcrxorg.kcrxepmsrs.businessmodule.cmdinfo.paymentSack;
 import cn.kcrxorg.kcrxepmsrs.businessmodule.cmdinfo.stockPackInfo;
 import cn.kcrxorg.kcrxepmsrs.businessmodule.datainfo.UnPackageData;
+import cn.kcrxorg.kcrxepmsrs.businessmodule.datainfo.packinfo;
 import cn.kcrxorg.kcrxepmsrs.businessmodule.datainfo.unpackinfo;
 import cn.kcrxorg.kcrxepmsrs.mbutil.DecimalTool;
 import cn.kcrxorg.kcrxepmsrs.mbutil.TXTWriter;
@@ -52,6 +55,18 @@ public class UnPackageActivity extends BisnessBaseActivity {
         {
             tagidlist.add(stockPackInfo.getSackNo());
         }
+        viewCmdInfoList=new ArrayList<ViewCmdInfo>();
+        for(stockPackInfo stockPackInfo:unPackageCMD.getStockPackInfoList())
+        {
+            // tagidlist.add(stockPackInfo.getSackNo());
+            ViewCmdInfo viewCmdInfo=new ViewCmdInfo();
+            viewCmdInfo.setSackNo(stockPackInfo.getSackNo());
+            viewCmdInfo.setPaperTypeName(stockPackInfo.getPaperTypeName());
+            viewCmdInfo.setVoucherTypeName(stockPackInfo.getVoucherTypeName());
+            viewCmdInfo.setVal(stockPackInfo.getVal());
+            viewCmdInfoList.add(viewCmdInfo);
+        }
+
         mHandler = new Handler() {
             @Override
             public void handleMessage(Message msg) {
@@ -75,15 +90,23 @@ public class UnPackageActivity extends BisnessBaseActivity {
                                 mylog.Write(cardnum+"不在任务列表不可补登");
                                 break;
                             }
-                            if(!tagEpcData.getLockstuts().equals("unLock")&&tagEpcData.getHasElec()==true)//未关锁不可以补登
+                            if(!tagEpcData.getLockstuts().equals("unLock")&&tagEpcData.getHasElec()==true)//关锁不可以补登
                             {
                                 Util.playErr();
                                 addRsinfo(cardnum+"关锁不可补登，锁状态："+tagEpcData.getLockstuts(),false);
                                 mylog.Write(cardnum+"关锁不可补登，锁状态："+tagEpcData.getLockstuts());
                                 break;
                             }
+                            if(!checkDataList(cardnum))
+                            {
+                                Util.playErr();
+                                addRsinfo(cardnum+"已登记，不可补登",false);
+                                mylog.Write(cardnum+"已登记，不可补登");
+                                break;
+                            }
                             isgood++;
                             saninfo.setText("已拆封: "+isgood+"袋");
+                            setGoodViewCmdInfo(cardnum+"");//设置任务列表
                             stockPackInfo thisstockPackInfo = getstockPackInfo(cardnum);
                             unpackinfo unpackinfo = new unpackinfo();
                             unpackinfo.setSackNo(cardnum);
@@ -129,7 +152,7 @@ public class UnPackageActivity extends BisnessBaseActivity {
                                 saninfo .setText("已拆封: "+isgood+"袋");
                                 stockPackInfo thisstockPackInfo = getstockPackInfo(cardnum);
                                 addRsinfo("签封" + cardnum + "拆封成功!",true);
-
+                                setGoodViewCmdInfo(cardnum+"");//设置任务列表
                                 unpackinfo unpackinfo = new unpackinfo();
                                 unpackinfo.setSackNo(cardnum);
                                 unpackinfo.setVal(thisstockPackInfo.getVal());
@@ -151,7 +174,17 @@ public class UnPackageActivity extends BisnessBaseActivity {
             }
         };
     }
-
+    public boolean checkDataList(String tagid)//查看补登的是否已经在数据列表中
+    {
+        for (unpackinfo p:unpackinfoList)
+        {
+            if(p.getSackNo().equals(tagid))
+            {
+                return false;
+            }
+        }
+        return true;
+    }
     public void initView()
     {
         line_kun.setVisibility(View.GONE);
@@ -169,7 +202,7 @@ public class UnPackageActivity extends BisnessBaseActivity {
 
         waitunpack=unPackageCMD.getStockPackInfoList().length;
 
-        tv_header.setText("拆封");
+        tv_header.setCenterString("拆封");
         tv_operinfo.setText("请按【开锁】进行拆封，或按【取消】结束任务");
         tv_footer.setText("请按【开锁】进行拆封，或按【取消】结束任务");
 
@@ -255,7 +288,6 @@ public class UnPackageActivity extends BisnessBaseActivity {
                     mylog.Write("生成数据文件失败,原因:"+e.getMessage());
                     Toast.makeText(this,"生成数据文件失败,原因:"+e.getMessage(),Toast.LENGTH_LONG).show();
                 }
-
             }
             finish();
         }else{

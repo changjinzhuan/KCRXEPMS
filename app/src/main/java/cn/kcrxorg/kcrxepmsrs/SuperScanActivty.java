@@ -19,6 +19,8 @@ import java.util.Date;
 import java.util.List;
 
 import cn.kcrxorg.kcrxepmsrs.businessmodule.cmdinfo.SuperScanCMD;
+import cn.kcrxorg.kcrxepmsrs.businessmodule.cmdinfo.ViewCmdInfo;
+import cn.kcrxorg.kcrxepmsrs.businessmodule.cmdinfo.paymentSack;
 import cn.kcrxorg.kcrxepmsrs.businessmodule.cmdinfo.superScanBusiInfo;
 import cn.kcrxorg.kcrxepmsrs.businessmodule.datainfo.SuperScanData;
 import cn.kcrxorg.kcrxepmsrs.businessmodule.datainfo.superScanPackinfo;
@@ -114,6 +116,17 @@ public class SuperScanActivty extends BisnessBaseActivity {
 
         }
 
+        //初始化查看任务列表
+        viewCmdInfoList=new ArrayList<ViewCmdInfo>();
+        for(superScanBusiInfo stockPackInfo:superScanCMD.getBusiInfoList())
+        {
+            ViewCmdInfo viewCmdInfo=new ViewCmdInfo();
+            viewCmdInfo.setSackNo("无");
+            viewCmdInfo.setPaperTypeName("无");
+            viewCmdInfo.setVoucherTypeName(stockPackInfo.getVoucherTypeName());
+            viewCmdInfo.setVal(stockPackInfo.getVal());
+            viewCmdInfoList.add(viewCmdInfo);
+        }
         mHandler = new Handler() {
             @Override
             public void handleMessage(Message msg) {
@@ -172,7 +185,7 @@ public class SuperScanActivty extends BisnessBaseActivity {
     }
     public void initView()
     {
-        tv_header.setText("电子签封登记");
+        tv_header.setCenterString("电子签封登记");
         tv_operinfo.setText("请按【扫描】进行登记或按【取消】结束任务");
         tv_footer.setText("请按【扫描】进行登记或按【取消】结束任务");
         line_kun.removeAllViews();//清除捆数栏，准备添加库间选择列表
